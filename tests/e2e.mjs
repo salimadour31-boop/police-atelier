@@ -75,6 +75,19 @@ await saveDownload(page, '[data-tpl=arabic][data-fmt=png]', 'docs/planche-arabe.
 // langues
 for (const l of ['en', 'kab', 'fr']) await page.click(`[data-lang=${l}]`);
 await page.check('#tif'); await page.click('[data-lang=kab]'); results.tifTitle = await page.textContent('#sec-input h2'); await page.uncheck('#tif'); await page.click('[data-lang=fr]');
+// ---- correction visuelle : alphabet par défaut sur une image qui contient accents + ponctuation + taches
+await page.click('#resetAll'); await page.selectOption('#mode', 'free');
+await page.fill('#alphabet', 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789');
+await page.setInputFiles('#file', 'tests/fixtures/real/photo-alphabet-accents.jpg'); await waitGlyphs(page);
+const al = await page.$$eval('#alerts .alert', e => e.map(x => x.textContent));
+ok(al.some(t => /attendus/.test(t)), 'écart de nombre signalé : ' + (al.find(t => /attendus/.test(t)) || '').slice(0, 90));
+const before = await page.evaluate(() => PAApp.state.run.extract.items.filter(i => !i.key).length);
+await page.click('#nextReview'); ok(await page.isVisible('#boxEdit'), 'éditeur posé sur la boîte à vérifier');
+await page.fill('#boxInput', 'é'); await page.press('#boxInput', 'Enter');
+const after = await page.evaluate(() => ({ n: PAApp.state.run.extract.items.filter(i => !i.key).length, has: PAApp.state.run.extract.items.some(i => i.key === 'é' && i.manual) }));
+ok(after.has && after.n === before - 1, `correction au clavier : ${before} → ${after.n} boîtes sans caractère, « é » attribué`);
+await page.evaluate(() => document.getElementById('sec-clean').scrollIntoView());
+await page.screenshot({ path: 'docs/screenshot-attribution.png' });
 // ---- mobile
 const mob = await open(390, 844);
 await mob.selectOption('#mode', 'free'); await mob.setInputFiles('#file', 'tests/fixtures/alphabet.png'); await waitGlyphs(mob);

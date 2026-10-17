@@ -1,6 +1,6 @@
 // Tests unitaires (node --test) : tracé, segmentation, métriques, analyse, synthèse, export.
 const test = require('node:test'), assert = require('node:assert');
-for (const f of ['imageproc', 'segment', 'trace', 'chars', 'analyse', 'pipeline', 'synth', 'fontbuild']) require(`../js/${f}.js`);
+for (const f of ['imageproc', 'segment', 'trace', 'chars', 'analyse', 'assign', 'pipeline', 'synth', 'fontbuild']) require(`../js/${f}.js`);
 const PA = globalThis.PA; globalThis.opentype = require('../vendor/opentype.min.js');
 const blank = (w, h) => ({ w, h, data: new Uint8Array(w * h) });
 const disc = (b, cx, cy, r, v = 1) => { for (let y = 0; y < b.h; y++) for (let x = 0; x < b.w; x++) if (Math.hypot(x - cx, y - cy) <= r) b.data[y * b.w + x] = v; };
@@ -82,4 +82,31 @@ test('WOFF : en-tête et tables', async () => {
   const otf = PA.buildFont(G, m, {}, { weight: 80 }).font.toArrayBuffer();
   const w = await PA.toWOFF(otf, async u => new Uint8Array(zlib.deflateSync(u)));
   const v = new DataView(w); assert.strictEqual(v.getUint32(0), 0x774F4646); assert.strictEqual(v.getUint32(8), w.byteLength);
+});
+test('attribution : une tache en tête ne décale pas l\'alphabet (alignement)', () => {
+  // ligne « a b g » (x, x, descendante) précédée d'un point parasite
+  const mk = (x0, y0, x1, y1) => ({ x0, y0, x1, y1, area: (x1 - x0) * (y1 - y0), line: 0 });
+  const comps = [mk(0, 40, 4, 44), mk(10, 50, 40, 100), mk(50, 20, 80, 100), mk(90, 50, 120, 130), mk(130, 20, 140, 100)];
+  const al = PA.align(comps, ['a', 'b', 'g', 'l']);
+  assert.deepStrictEqual(al.pairs.map(p => p.key), [null, 'a', 'b', 'g', 'l']);
+  assert.strictEqual(al.extra.length, 1); assert.ok(!al.exact);
+});
+test('attribution : caractère manquant signalé, pas de glissement', () => {
+  const mk = (x0, y0, x1, y1) => ({ x0, y0, x1, y1, area: (x1 - x0) * (y1 - y0), line: 0 });
+  const comps = [mk(10, 50, 40, 100), mk(90, 50, 120, 130), mk(130, 20, 140, 100)]; // a, g, l (b absent)
+  const al = PA.align(comps, ['a', 'b', 'g', 'l']);
+  assert.deepStrictEqual(al.pairs.map(p => p.key), ['a', 'g', 'l']); assert.deepStrictEqual(al.missing, ['b']);
+});
+test('vraisemblance : petite marque attribuée à une lettre = suspect', () => {
+  const c = { feat: [0.2, -0.05] }; assert.strictEqual(PA.plausibility(c, 'H').ok, false);
+  assert.strictEqual(PA.plausibility({ feat: [0.68, 0] }, 'g').why, 'noDesc');
+  assert.strictEqual(PA.plausibility({ feat: [1, 0] }, 'H').ok, true);
+});
+test('segmentation : tréma (deux points) fusionné, guillemet double en une pièce', () => {
+  const b = blank(200, 120);
+  rect(b, 20, 50, 50, 100); disc(b, 27, 38, 4); disc(b, 43, 38, 4);   // ë simplifié
+  rect(b, 90, 20, 96, 45); rect(b, 102, 20, 108, 45);                  // "
+  rect(b, 130, 20, 140, 100);                                          // l
+  for (const x of [150, 165, 180]) rect(b, x, 50, x + 10, 100);        // autres lettres
+  const g = PA.segment(b); assert.strictEqual(g.length, 6, 'ë, ", l + 3');
 });

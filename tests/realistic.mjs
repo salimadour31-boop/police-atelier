@@ -12,6 +12,9 @@ const CASES = [
   { name: 'serif-gras', file: R + 'serif-gras.png', mode: 'auto', ref: 'DejaVuSerifBold', expect: 'free' },
   { name: 'photo-planche-latine-sauvola', file: R + 'photo-planche-latine.jpg', mode: 'template', method: 'sauvola', ref: 'Handlee', expect: 'latin' },
   { name: 'negatif-serif', file: R + 'negatif-serif.png', mode: 'free', ref: 'DejaVuSerifBold', expect: 'free' },
+  { name: 'alphabet-accents-ponct', file: R + 'photo-alphabet-accents.jpg', mode: 'free', ref: 'Averia', expect: 'free', alphabet: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789éèêàçùôîëïûœæ.,;:!?\'"-()' },
+  { name: 'alphabet-accents-defaut', file: R + 'photo-alphabet-accents.jpg', mode: 'free', ref: 'Averia', expect: 'free', mismatch: true },
+  { name: 'alphabet-serre-incline', file: R + 'photo-alphabet-serre.jpg', mode: 'free', ref: 'Averia', expect: 'free' },
   { name: 'photo-planche-arabe', file: R + 'photo-planche-arabe.jpg', mode: 'auto', ref: 'NotoNaskh', expect: 'arabic' }
 ];
 const b = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args: ['--no-sandbox'] });
@@ -19,13 +22,15 @@ const out = [];
 for (const c of CASES) {
   const ctx = await b.newContext({ viewport: { width: 1440, height: 1000 }, acceptDownloads: true }); const p = await ctx.newPage(); const errs = [];
   p.on('console', m => m.type() === 'error' && errs.push(m.text())); p.on('pageerror', e => errs.push(e.message));
-  await p.goto(URL); await p.selectOption('#mode', c.mode); if (c.method) await p.selectOption('#method', c.method);
+  await p.goto(URL); await p.selectOption('#mode', c.mode); if (c.method) await p.selectOption('#method', c.method); if (c.alphabet) await p.fill('#alphabet', c.alphabet);
   const t0 = Date.now(); await p.setInputFiles('#file', c.file);
   let r = { name: c.name };
   try {
     await p.waitForFunction(() => document.getElementById('counts').textContent || /⚠/.test(document.getElementById('status').textContent), null, { timeout: 120000 });
     r.ms = Date.now() - t0; r.status = await p.textContent('#status'); r.counts = await p.textContent('#counts');
     r.items = await p.evaluate(() => { const ex = PAApp.state.run && PAApp.state.run.extract; return ex ? ex.items.map(it => it.key) : []; });
+    r.suspects = await p.evaluate(() => { const ex = PAApp.state.run && PAApp.state.run.extract; return ex ? ex.items.filter(it => it.suspect).map(it => it.key || '∅') : []; });
+    r.missing = await p.evaluate(() => (PAApp.state.run && PAApp.state.run.extract.missing) || []);
     r.analysis = await p.evaluate(() => PAApp.state.analysis); r.metrics = await p.evaluate(() => PAApp.state.metrics);
     const [d] = await Promise.all([p.waitForEvent('download'), p.click('#dlOTF')]); await d.saveAs(`tests/out/real-${c.name}.otf`);
     r.alerts = await p.$$eval('#alerts .alert', els => els.map(e => e.className.replace('alert ', '') + ': ' + e.textContent));
@@ -41,7 +46,7 @@ for (const c of CASES) {
     });
     await p.screenshot({ path: `tests/out/real-${c.name}.png`, fullPage: true });
   } catch (e) { r.fail = e.message.split('\n')[0]; }
-  r.errors = errs; out.push(Object.assign(r, { ref: c.ref, expect: c.expect })); await ctx.close();
+  r.errors = errs; out.push(Object.assign(r, { ref: c.ref, expect: c.expect, alphabet: c.alphabet, mismatch: !!c.mismatch })); await ctx.close();
 }
 await b.close(); if (srv) srv.kill();
 fs.writeFileSync('tests/out/realistic.json', JSON.stringify(out, null, 1));

@@ -5,7 +5,7 @@ from iou import raster
 from fontTools.ttLib import TTFont
 G = '/usr/share/fonts/truetype/sand-box/google/'
 REF = {'Handlee': G + 'Handlee/Handlee-Regular.ttf', 'Caveat': G + 'Caveat/Caveat-VariableFont_wght.ttf',
-       'DejaVuSerifBold': '/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf', 'NotoNaskh': G + 'Noto Naskh Arabic/NotoNaskhArabic-VariableFont_wght.ttf'}
+       'DejaVuSerifBold': '/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf', 'NotoNaskh': G + 'Noto Naskh Arabic/NotoNaskhArabic-VariableFont_wght.ttf', 'Averia': G + 'Averia Serif Libre/AveriaSerifLibre-Regular.ttf'}
 def iou(a, b): return float((a & b).sum() / max(1, (a | b).sum()))
 res = json.load(open('tests/out/realistic.json')); summary = []
 for r in res:
@@ -23,7 +23,7 @@ for r in res:
         if bp.bounds and (bp.bounds[3] - bp.bounds[1] > 1300 or bp.bounds[2] - bp.bounds[0] > 1300): giant.append(ch)
     s = {'name': r['name'], 'status': r.get('status'), 'counts': r.get('counts'), 'giant': giant}
     if r['expect'] != 'arabic':
-        chars = string.ascii_letters + string.digits; scores = {}
+        chars = (r.get('alphabet') or string.ascii_letters + string.digits); scores = {}
         traced = set(k for k in (r.get('items') or []) if k)
         for ch in chars:
             if ch not in traced: continue
@@ -32,7 +32,7 @@ for r in res:
         v = list(scores.values()) or [0]
         s.update(traced=len(scores), iou_mean=round(sum(v) / len(v), 3), iou_min=min(v), bad=sorted([k for k, x in scores.items() if x < 0.6]), worst=sorted(scores.items(), key=lambda x: x[1])[:6])
         # largeur des approches : rapport encre / avance pour quelques lettres
-        txt = 'abcdef ABC Hamburgefonstiv 0123'
+        txt = "Voix ambiguë d'un cœur qui au zéphyr préfère les jattes de kiwis. 0123"
         # lignes de base et hauteurs : lettres posées à y≈0, capitales plates cohérentes
         def bnds(ch):
             bp = BoundsPen(gs); gs[cmap[ord(ch)]].draw(bp); return bp.bounds
@@ -49,16 +49,19 @@ for r in res:
 print(json.dumps(summary, ensure_ascii=False, indent=1)); json.dump(summary, open('tests/out/check_real.json', 'w'), ensure_ascii=False, indent=1)
 # --- assertions de régression
 fail = []
+r_by = {r['name']: r for r in res}
 for s in summary:
+    s['suspects'] = r_by[s['name']].get('suspects'); s['missing'] = r_by[s['name']].get('missing')
     if 'error' in s: fail.append(f"{s['name']}: OTF illisible {s['error']}"); continue
     if s['giant']: fail.append(f"{s['name']}: glyphes géants {s['giant']}")
     if 'iou_mean' in s:
-        if s['traced'] < 60: fail.append(f"{s['name']}: seulement {s['traced']} glyphes tracés")
+        if s['traced'] < 60 and not r_by[s['name']].get('mismatch'): fail.append(f"{s['name']}: seulement {s['traced']} glyphes tracés")
         if s['iou_min'] < 0.55 or s['iou_mean'] < 0.78: fail.append(f"{s['name']}: IoU {s['iou_mean']} / {s['iou_min']} (mauvaise attribution ?)")
         if s['baseline_bad']: fail.append(f"{s['name']}: lignes de base décalées {s['baseline_bad']}")
         p = s.get('preview') or {}
         if p.get('clusters') != 6 or p.get('inkHeight', 999) > 130: fail.append(f"{s['name']}: aperçu « abcdef » anormal {p}")
-exp = {r['name']: r['expect'] for r in res}
+for r in res:
+    if r.get('mismatch') and not any('countMismatch' in a or 'attendus' in a for a in (r.get('alerts') or [])): fail.append(f"{r['name']}: écart de nombre non signalé {r.get('alerts')}")
 for r in res:
     if r.get('fail'): fail.append(f"{r['name']}: {r['fail']}")
     if r['errors']: fail.append(f"{r['name']}: erreurs console {r['errors']}")
