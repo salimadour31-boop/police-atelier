@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Police Atelier — fabrique de police à partir d'une image</title>
+<meta name="description" content="Outil libre et gratuit : transformez une image de lettres en police OTF installable. 100 % local.">
+<link rel="icon" href="assets/icon.svg">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand"><img src="assets/icon.svg" alt="" width="34" height="34"><div><h1>Police Atelier</h1><p data-i18n="tagline"></p></div></div>
+  <div class="langs" role="group" aria-label="Langue">
+    <button data-lang="fr" class="on">FR</button><button data-lang="en">EN</button><button data-lang="kab">KAB</button>
+    <label class="tif" title="Tifinagh"><input type="checkbox" id="tif"> ⵜⵉⴼⵉⵏⴰⵖ</label>
+  </div>
+</header>
+<p class="kabnote" data-i18n="kabNote"></p>
+<main>
+  <section class="card" id="sec-input">
+    <h2 data-i18n="s1"></h2>
+    <label class="drop" id="drop" tabindex="0"><input type="file" id="file" accept="image/png,image/jpeg,image/webp" hidden><span data-i18n="drop"></span></label>
+    <div class="row">
+      <label><span data-i18n="mode"></span>
+        <select id="mode"><option value="auto" data-i18n="modeAuto"></option><option value="template" data-i18n="modeTpl"></option><option value="free" data-i18n="modeFree"></option></select></label>
+      <label class="grow"><span data-i18n="alphabet"></span><input id="alphabet" dir="auto" value="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"></label>
+    </div>
+    <div class="tpl"><p data-i18n="tplHint"></p>
+      <div class="btns"><span data-i18n="tplLatin"></span> <button data-tpl="latin" data-fmt="pdf">PDF</button><button data-tpl="latin" data-fmt="png">PNG</button>
+      <span data-i18n="tplArabic"></span> <button data-tpl="arabic" data-fmt="pdf">PDF</button><button data-tpl="arabic" data-fmt="png">PNG</button></div></div>
+  </section>
+
+  <section class="card wide" id="sec-clean">
+    <h2 data-i18n="s2"></h2>
+    <div class="controls">
+      <label><span data-i18n="levels"></span><span class="pair"><input type="range" id="black" min="0" max="200" value="0"><input type="range" id="white" min="55" max="255" value="255"></span></label>
+      <label><span data-i18n="thresh"></span> <output id="threshOut"></output><span class="pair"><input type="range" id="thresh" min="1" max="254" value="128" disabled><label class="mini"><input type="checkbox" id="threshAuto" checked> <span data-i18n="auto"></span></label></span></label>
+      <label><span data-i18n="despeckle"></span><input type="number" id="despeckle" min="0" max="500" value="12"></label>
+      <label class="mini"><input type="checkbox" id="deskew" checked> <span data-i18n="deskew"></span></label>
+      <label class="mini"><input type="checkbox" id="invert"> <span data-i18n="invert"></span></label>
+      <div class="btns"><button id="perspBtn" data-i18n="persp"></button><button id="perspReset" data-i18n="perspReset"></button><button id="rerun" class="primary" data-i18n="apply"></button></div>
+    </div>
+    <div class="views">
+      <div class="view"><canvas id="srcCanvas" width="10" height="10"></canvas></div>
+      <div class="view"><canvas id="binCanvas" width="10" height="10"></canvas></div>
+    </div>
+    <p class="status" id="status" data-i18n="noImage" aria-live="polite"></p>
+    <p class="hint" data-i18n="assignHint"></p>
+    <div class="assign" id="assign" hidden><label><span data-i18n="assign"></span> <input id="assignInput" maxlength="8" dir="auto"></label><button id="assignOk" class="primary" data-i18n="ok"></button><button id="assignIgnore" data-i18n="ignore"></button></div>
+    <button id="addSheet" class="primary" data-i18n="addSheet" disabled></button>
+  </section>
+
+  <section class="card" id="sec-analyse">
+    <h2 data-i18n="s3"></h2>
+    <dl class="stats" id="stats"></dl>
+    <h3 data-i18n="metrics"></h3>
+    <dl class="stats" id="metrics"></dl>
+  </section>
+
+  <section class="card wide" id="sec-glyphs">
+    <h2 data-i18n="s4"></h2>
+    <p class="legend"><span class="b traced" data-i18n="traced"></span><span class="b derived" data-i18n="derived"></span><span class="b generated" data-i18n="generated"></span> <small data-i18n="legend"></small></p>
+    <p class="counts" id="counts"></p>
+    <div class="grid" id="grid"></div>
+    <div class="editor" id="editor" hidden>
+      <canvas id="glyphCanvas" width="320" height="320"></canvas>
+      <div class="controls">
+        <h3 id="edKey"></h3><p id="edSrc" class="small"></p>
+        <label><span data-i18n="baseline"></span><input type="range" id="edDy" min="-200" max="200" value="0"></label>
+        <label><span data-i18n="scale"></span><input type="range" id="edScale" min="50" max="150" value="100"></label>
+        <label><span data-i18n="lsb"></span><input type="range" id="edLsb" min="-150" max="250" value="0"></label>
+        <label><span data-i18n="rsb"></span><input type="range" id="edRsb" min="-150" max="250" value="0"></label>
+      </div>
+    </div>
+  </section>
+
+  <section class="card wide" id="sec-preview">
+    <h2 data-i18n="s5"></h2>
+    <div class="controls row">
+      <label><span data-i18n="spacing"></span><input type="range" id="spacing" min="40" max="200" value="100"></label>
+      <label><span data-i18n="tracking"></span><input type="range" id="tracking" min="-100" max="300" value="0"></label>
+      <label>px <input type="range" id="psize" min="16" max="160" value="64"></label>
+    </div>
+    <textarea id="preview" dir="auto" spellcheck="false"></textarea>
+  </section>
+
+  <section class="card" id="sec-export">
+    <h2 data-i18n="s6"></h2>
+    <label><span data-i18n="family"></span><input id="family" value="Ma Police"></label>
+    <label><span data-i18n="style"></span><input id="style" value="Regular"></label>
+    <label><span data-i18n="version"></span><input id="version" value="1.000"></label>
+    <div class="btns col">
+      <button id="dlOTF" class="primary" data-i18n="exportOTF" disabled></button>
+      <button id="dlWOFF" data-i18n="exportWOFF" disabled></button>
+      <button id="dlJSON" data-i18n="exportJSON" disabled></button>
+      <label class="button"><input type="file" id="openJSON" accept="application/json" hidden><span data-i18n="importJSON"></span></label>
+      <button id="resetAll" data-i18n="reset"></button>
+    </div>
+    <p class="small" id="valid"></p>
+    <p class="small" data-i18n="fileHelp"></p>
+  </section>
+</main>
+<footer>Police Atelier — MIT · <a href="https://github.com/salimadour31-boop/police-atelier">GitHub</a> · opentype.js (MIT) · Tout reste dans votre navigateur.</footer>
+<script src="vendor/opentype.min.js"></script>
+<script src="js/imageproc.js"></script><script src="js/segment.js"></script><script src="js/trace.js"></script>
+<script src="js/chars.js"></script><script src="js/analyse.js"></script><script src="js/pipeline.js"></script>
+<script src="js/synth.js"></script><script src="js/fontbuild.js"></script><script src="js/template.js"></script>
+<script src="js/i18n.js"></script><script src="js/app.js"></script>
+</body>
+</html>
