@@ -76,7 +76,7 @@
   function markerCenters() { const S = PA.SHEET, m = S.margin + S.marker / 2; return [[m, m], [S.W - m, m], [S.W - m, S.H - m], [m, S.H - m]]; }
 
   // lettres dont le bas repose sur la ligne de base (on peut caler leur ligne de base sur leur propre bas)
-  const SNAP = /^[A-IK-PR-Za-fhik-ortuvwxz0-9éèêàùôîëïûœæčɛ!?%#&*+=«»]/;
+  const SNAP = /^[A-IK-PR-Za-fhik-ortuvwxz0-9éèêàùôîëïûœæčɛ!?%#&*+=«».:]/;
   const NOSNAP = /[ḥṛṣṭẓḍçǧɣgjpqyQJ,;()\/@_'"\-ـ]|[جحخعغمنيىئسشصضقل]/;
   const canSnap = k => !!k && SNAP.test(k) && !NOSNAP.test(k); // l'arabe (points souscrits) n'est jamais calé
 
@@ -134,7 +134,7 @@
   function mergeComp(a, b) { a.x0 = Math.min(a.x0, b.x0); a.y0 = Math.min(a.y0, b.y0); a.x1 = Math.max(a.x1, b.x1); a.y1 = Math.max(a.y1, b.y1); a.area += b.area; const p = new Int32Array(a.pixels.length + b.pixels.length); p.set(a.pixels); p.set(b.pixels, a.pixels.length); a.pixels = p; }
 
   /** Filtre des composantes parasites (texte libre) : bords d'image, traits de cadre, bruit */
-  function filterComponents(comps, bin, alphabet) {
+  function filterComponents(comps, bin, alphabet, o = {}) {
     if (!comps.length) return { kept: comps, removed: 0 };
     const mh = PA.median(comps.map(c => c.y1 - c.y0 + 1)), ma = PA.median(comps.map(c => c.area));
     const punct = /[.,;:'"\-·،]/.test(alphabet);
@@ -143,34 +143,39 @@
       if (c.x0 <= 1 || c.y0 <= 1 || c.x1 >= bin.w - 2 || c.y1 >= bin.h - 2) return false;  // touche le bord : table, ombre
       if (h > 3 * mh || w > 5 * mh) return false;                                           // géant : cadre, tache
       if ((h / w > 9 && h > 1.6 * mh) || (w / h > 9 && w > 1.6 * mh)) return false;         // trait de cadre / grille
-      if (c.area < (punct ? 0.015 : 0.05) * ma) return false;                               // poussière
+      if (!o.keepSmall && c.area < (punct ? 0.012 : 0.03) * ma) return false;              // poussière isolée
       return true;
     });
     return { kept, removed: comps.length - kept.length };
   }
 
-  /** Texte libre : segmente, filtre, ordonne (RTL si arabe), attribue dans l'ordre */
+  /** Texte libre : segmente, filtre, ordonne (RTL si arabe), puis aligne avec l'alphabet attendu */
   function extractFree(cleaned, alphabet, warnings) {
     const chars = Array.from(alphabet.replace(/\s+/g, ''));
     const rtl = PA.hasRTL(alphabet);
     let comps = PA.components(cleaned.bin).filter(c => c.area >= 4);
-    const f = filterComponents(comps, cleaned.bin, alphabet); comps = f.kept;
-    comps = PA.readingOrder(PA.mergeMarks(comps));
-    // 2e passe : après fusion, rejette encore les blocs aberrants
-    const f2 = filterComponents(comps, cleaned.bin, alphabet); comps = PA.readingOrder(f2.kept);
+    // 1) on retire bords, traits de cadre, géants — mais PAS encore les petites pièces (points, accents)
+    const f = filterComponents(comps, cleaned.bin, alphabet, { keepSmall: true }); comps = f.kept;
+    // 2) fusion des signes avec leur lettre, puis 3) poussières restées isolées
+    comps = PA.mergeMarks(comps);
+    const f2 = filterComponents(comps, cleaned.bin, alphabet, { keepSmall: false }); comps = PA.readingOrder(f2.kept);
     if (f.removed + f2.removed) warnings.push({ level: 'info', code: 'removed', n: f.removed + f2.removed });
     if (rtl) {
       const lines = new Map(); comps.forEach(c => { if (!lines.has(c.line)) lines.set(c.line, []); lines.get(c.line).push(c); });
       comps = [...lines.keys()].sort((a, b) => a - b).flatMap(k => lines.get(k).reverse());
     }
-    if (comps.length !== chars.length) warnings.push({ level: 'warn', code: 'countMismatch', found: comps.length, expected: chars.length });
-    const items = comps.map((c, i) => ({ key: chars[i] || null, comp: c, line: c.line }));
+    // 4) alignement : composantes en trop = non attribuées, caractères manquants signalés
+    const al = PA.align(comps, chars, { bin: cleaned.bin });
+    const items = al.pairs.map(p => ({ key: p.key, comp: p.comp, line: p.comp.line, suspect: p.suspect || (p.key && !PA.plausibility(p.comp, p.key).ok) }));
+    if (!al.exact) warnings.push({ level: 'warn', code: 'countMismatch', found: comps.length, expected: chars.length, extra: al.extra.length, missing: al.missing.join(' ') || '—' });
+    const nSus = items.filter(it => it.key && it.suspect).length;
+    if (nSus) warnings.push({ level: 'warn', code: 'suspect', n: nSus });
     assignBaselines(items);
-    const hs = fn => items.filter(it => it.key && fn(it.key)).map(it => it.comp.y1 - it.comp.y0 + 1);
+    const hs = fn => items.filter(it => it.key && !it.suspect && fn(it.key)).map(it => it.comp.y1 - it.comp.y0 + 1);
     const caps = hs(k => /^[BDEFHIKLMNPRTUVWXYZ]$/.test(k)), xs = hs(k => PA.XLET.has(k));
     const scale = caps.length ? 700 / PA.median(caps) : xs.length ? 500 / PA.median(xs) : 700 / (PA.median(items.map(it => it.comp.y1 - it.comp.y0 + 1)) || 1);
     items.forEach(it => it.scale = scale);
-    return { kind: 'free', items, bin: cleaned.bin, gray: cleaned.gray, rtl };
+    return { kind: 'free', items, bin: cleaned.bin, gray: cleaned.gray, rtl, missing: al.missing };
   }
   /** Ligne de base par ligne (médiane), puis calage sur le propre bas des lettres posées */
   function assignBaselines(items) {
@@ -238,7 +243,7 @@
       const g = vectorize(ex.bin, it, opts);
       const b = g.bbox;
       if (b.yMax - b.yMin > 2600 || b.xMax - b.xMin > 3000 || !g.contours.length) { warnings.push({ level: 'warn', code: 'giant', key: it.key }); it.rejected = true; continue; }
-      glyphs.push(g);
+      g.suspect = !!it.suspect; glyphs.push(g);
     }
     if (!glyphs.length) warnings.push({ level: 'error', code: 'noGlyph' });
     return { mode: ex.kind, glyphs, extract: ex, cleaned, warnings };

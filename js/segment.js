@@ -41,8 +41,10 @@
   /** Fusionne les petites composantes (points, accents) avec la lettre la plus proche
    *  qui les recouvre horizontalement, au-dessus ou en dessous. */
   function mergeMarks(comps) {
-    const hs = comps.map(c => c.y1 - c.y0 + 1); const mh = median(hs) || 1, ma = median(comps.map(c => c.area)) || 1;
-    let list = comps.map(c => Object.assign({}, c));
+    const hs = comps.map(c => c.y1 - c.y0 + 1); const ma = median(comps.map(c => c.area)) || 1;
+    // hauteur de référence : seulement les « corps » (les petites pièces faussent la médiane)
+    const mh = median(comps.filter(c => c.area >= 0.5 * ma).map(c => c.y1 - c.y0 + 1)) || median(hs) || 1;
+    let list = comps.map(c => Object.assign({}, c, { body: [c.x0, c.y0, c.x1, c.y1] })); // body : boîte d'origine, avant fusion
     // ordre : petites d'abord
     const order = list.map((c, i) => i).sort((i, j) => list[i].area - list[j].area);
     const dead = new Set();
@@ -55,12 +57,13 @@
         if (j === i || dead.has(j)) continue;
         const b = list[j];
         if (b.area < a.area * 1.15 && !(similarStack(a, b))) continue;
-        const ov = Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0) + 1;
-        const cx = (a.x0 + a.x1) / 2, bcx = (b.x0 + b.x1) / 2;
+        const [bx0, by0, bx1, by1] = b.body; // on compare au corps de la lettre, pas aux signes déjà fusionnés
+        const ov = Math.min(a.x1, bx1) - Math.max(a.x0, bx0) + 1;
+        const cx = (a.x0 + a.x1) / 2, bcx = (bx0 + bx1) / 2;
         // écart horizontal (0 si chevauchement) : les points manuscrits sont souvent décalés
         const hgap = ov > 0 ? 0 : -ov;
         if (hgap > 0.35 * mh) continue;
-        const gap = a.y1 < b.y0 ? b.y0 - a.y1 : (a.y0 > b.y1 ? a.y0 - b.y1 : 0);
+        const gap = a.y1 < by0 ? by0 - a.y1 : (a.y0 > by1 ? a.y0 - by1 : 0);
         if (gap > 0.6 * mh) continue;
         if (gap === 0 && ov > 0) continue; // chevauchement vertical : lettres voisines
         if (gap === 0) continue;
@@ -69,7 +72,17 @@
       }
       if (best >= 0) { mergeInto(list[best], a); dead.add(i); }
     }
-    return list.filter((c, i) => !dead.has(i));
+    list = list.filter((c, i) => !dead.has(i));
+    // « " » : deux petites marques voisines, même taille, même hauteur -> fusion
+    for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) {
+      const a = list[i], b = list[j]; if (!a || !b) continue;
+      const ha = a.y1 - a.y0 + 1, hb = b.y1 - b.y0 + 1;
+      if (ha > 0.5 * mh || hb > 0.5 * mh || a.area > 0.3 * ma || b.area > 0.3 * ma) continue;
+      const hgap = Math.max(a.x0, b.x0) - Math.min(a.x1, b.x1);
+      const vov = Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0);
+      if (hgap > 0 && hgap < 0.22 * mh && vov > 0.6 * Math.min(ha, hb) && Math.abs(ha - hb) < 0.35 * Math.max(ha, hb) && a.parts == null && b.parts == null) { mergeInto(a, b); a.parts = 2; list[j] = null; }
+    }
+    return list.filter(Boolean);
   }
   // deux marques de taille voisine empilées (« : », « = »)
   function similarStack(a, b) {
@@ -79,19 +92,32 @@
 
   /** Regroupe en lignes puis trie dans l'ordre de lecture (haut→bas, gauche→droite) */
   function readingOrder(glyphs) {
-    const mh = median(glyphs.map(g => g.y1 - g.y0 + 1)) || 1;
-    const sorted = [...glyphs].sort((a, b) => (a.y0 + a.y1) - (b.y0 + b.y1));
+    // 1) lignes par regroupement 1D des centres des « corps » (composantes de taille normale),
+    //    coupure là où l'écart entre centres consécutifs dépasse 0,55 × hauteur médiane ;
+    // 2) chaque petite composante (point, accent, ponctuation) rejoint la ligne dont la bande
+    //    verticale est la plus proche ; 3) tri gauche→droite dans chaque ligne.
+    if (!glyphs.length) return [];
+    const hs = glyphs.map(g => g.y1 - g.y0 + 1), mh = median(hs) || 1;
+    const bodies = glyphs.filter(g => g.y1 - g.y0 + 1 >= 0.45 * mh);
+    const cy = g => (g.y0 + g.y1) / 2;
+    const sorted = [...(bodies.length ? bodies : glyphs)].sort((a, b) => cy(a) - cy(b));
     const lines = [];
     for (const g of sorted) {
-      const cy = (g.y0 + g.y1) / 2;
-      let line = lines.find(L => Math.abs(cy - L.cy) < 0.6 * mh);
-      if (!line) { line = { cy, items: [] }; lines.push(line); }
-      line.items.push(g);
-      line.cy = median(line.items.map(t => (t.y0 + t.y1) / 2));
+      const L = lines[lines.length - 1];
+      if (L && cy(g) - L.lastCy < 0.55 * mh) { L.items.push(g); L.lastCy = cy(g); }
+      else lines.push({ items: [g], lastCy: cy(g) });
+    }
+    for (const L of lines) { L.top = median(L.items.map(g => g.y0)); L.bot = median(L.items.map(g => g.y1)); L.cy = (L.top + L.bot) / 2; }
+    const inBody = new Set(sorted);
+    for (const g of glyphs) {
+      if (inBody.has(g)) continue;
+      let best = lines[0], bd = Infinity;
+      for (const L of lines) { const c = cy(g), d = c < L.top ? L.top - c : c > L.bot ? c - L.bot : 0; if (d < bd) { bd = d; best = L; } }
+      best.items.push(g);
     }
     lines.sort((a, b) => a.cy - b.cy);
     const out = [];
-    lines.forEach((L, li) => { L.items.sort((a, b) => a.x0 - b.x0); L.items.forEach(g => { g.line = li; out.push(g); }); });
+    lines.forEach((L, li) => { L.items.sort((a, b) => (a.x0 + a.x1) - (b.x0 + b.x1)); L.items.forEach(g => { g.line = li; out.push(g); }); });
     return out;
   }
 
