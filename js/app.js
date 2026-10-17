@@ -16,7 +16,7 @@
     document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = PA.t(state.lang, el.dataset.i18n, state.tif); });
     document.querySelectorAll('.langs button').forEach(b => b.classList.toggle('on', b.dataset.lang === state.lang));
     if (!$('preview').dataset.touched) $('preview').value = PA.t(state.lang, 'previewText', false);
-    renderStats();
+    renderStats(); if (state.alerts) showAlerts(state.alerts);
   }
   document.querySelectorAll('.langs button').forEach(b => b.onclick = () => { state.lang = b.dataset.lang; applyLang(); });
   $('tif').onchange = e => { state.tif = e.target.checked; applyLang(); };
@@ -41,12 +41,16 @@
   $('file').onchange = e => { if (e.target.files[0]) loadFile(e.target.files[0]); e.target.value = ''; };
 
   async function loadFile(file) {
-    const bmp = await createImageBitmap(file);
+    let bmp;
+    try { bmp = await createImageBitmap(file); }
+    catch (e) { showAlerts([{ level: 'error', code: 'load', msg: e.message || String(e) }]); return; }
     const c = document.createElement('canvas'), f = Math.min(1, 2400 / Math.max(bmp.width, bmp.height));
     c.width = Math.round(bmp.width * f); c.height = Math.round(bmp.height * f);
     const ctx = c.getContext('2d'); ctx.drawImage(bmp, 0, 0, c.width, c.height);
     state.srcGray = PA.toGray(ctx.getImageData(0, 0, c.width, c.height).data, c.width, c.height);
     state.workGray = state.srcGray; state.persp = null;
+    state.loadNote = f < 1 ? { level: 'info', code: 'resized', a: `${bmp.width}×${bmp.height}`, b: `${c.width}×${c.height}` } : null;
+    if (bmp.close) bmp.close();
     if (PA.hasRTL($('alphabet').value)) $('alphabet').dir = 'rtl';
     processImage();
   }
@@ -54,22 +58,41 @@
   // ---------- traitement ----------
   function opts() {
     return {
-      mode: $('mode').value, alphabet: $('alphabet').value, black: +$('black').value, white: +$('white').value,
+      mode: $('mode').value, method: $('method').value, alphabet: $('alphabet').value, black: +$('black').value, white: +$('white').value,
       thresh: $('threshAuto').checked ? null : +$('thresh').value, invert: $('invert').checked ? true : 'auto',
       despeckle: +$('despeckle').value, deskew: $('deskew').checked
     };
   }
-  function processImage() {
-    if (!state.workGray) return;
-    try { state.run = PA.run(state.workGray, opts()); }
-    catch (e) { setStatus(e.message === 'template-not-found' ? tr('notFound') : String(e)); return; }
-    $('threshOut').textContent = state.run.cleaned.thresh; if ($('threshAuto').checked) $('thresh').value = state.run.cleaned.thresh;
-    const ex = state.run.extract;
-    setStatus(`${ex.kind === 'free' ? tr('freeFound') : tr('tplFound') + ' (' + ex.kind + ')'} — ${state.run.glyphs.length} ${tr('glyphsFound')}${ex.rtl ? ' — ' + tr('rtl') : ''}${state.run.cleaned.skew ? ` — deskew ${state.run.cleaned.skew}°` : ''}`);
-    $('addSheet').disabled = false;
-    drawViews(); rebuild();
+  /** Messages clairs (erreur / avertissement / info) au lieu d'exceptions */
+  function fmt(str, o) { return str.replace(/\{(\w+)\}/g, (_, k) => o[k] ?? ''); }
+  function showAlerts(list) {
+    state.alerts = list; const box = $('alerts'); box.innerHTML = '';
+    for (const w of list) { const d = document.createElement('div'); d.className = 'alert ' + w.level; d.textContent = fmt(tr(w.code === 'resized' ? 'resized' : 'w_' + w.code), w); box.append(d); }
   }
-  ['black', 'white', 'despeckle', 'deskew', 'invert', 'thresh', 'mode'].forEach(id => $(id).addEventListener('change', processImage));
+  let busy = false;
+  async function processImage() {
+    if (!state.workGray || busy) return;
+    busy = true; setStatus(tr('working')); document.body.classList.add('busy-cursor'); $('sec-clean').classList.add('busy');
+    await new Promise(r => requestAnimationFrame(() => setTimeout(r, 0))); // laisse l'interface afficher la progression
+    const alerts = state.loadNote ? [state.loadNote] : [];
+    try {
+      state.run = PA.run(state.workGray, opts());
+      const ex = state.run.extract, w = state.run.warnings;
+      if ($('mode').value === 'auto' && ex.kind === 'free') alerts.push({ level: 'info', code: 'notFoundAuto' });
+      alerts.push(...w);
+      if (state.run.cleaned.thresh !== 'sauvola') { $('threshOut').textContent = state.run.cleaned.thresh; if ($('threshAuto').checked) $('thresh').value = state.run.cleaned.thresh; }
+      else $('threshOut').textContent = 'Sauvola';
+      const label = ex.kind === 'free' ? tr('freeFound') : ex.kind === 'none' ? '—' : tr('tplFound') + ' (' + ex.kind + ')';
+      setStatus(`${label} — ${state.run.glyphs.length} ${tr('glyphsFound')}${ex.rtl ? ' — ' + tr('rtl') : ''}${state.run.cleaned.skew ? ` — deskew ${state.run.cleaned.skew}°` : ''}`);
+      $('addSheet').disabled = !state.run.glyphs.length;
+      drawViews(); rebuild();
+    } catch (e) {
+      console.warn(e); alerts.push({ level: 'error', code: 'crash', msg: e.message || String(e) }); setStatus('');
+    } finally {
+      busy = false; $('sec-clean').classList.remove('busy'); showAlerts(alerts);
+    }
+  }
+  ['black', 'white', 'despeckle', 'deskew', 'invert', 'thresh', 'mode', 'method'].forEach(id => $(id).addEventListener('change', processImage));
   $('threshAuto').onchange = e => { $('thresh').disabled = e.target.checked; processImage(); };
   $('alphabet').addEventListener('change', () => { $('alphabet').dir = PA.hasRTL($('alphabet').value) ? 'rtl' : 'ltr'; processImage(); });
   $('rerun').onclick = processImage;
@@ -136,11 +159,12 @@
     state.metrics = state.settings.metrics || PA.detectMetrics(list);
     state.analysis = PA.analyseStructure(list, state.metrics) || state.settings.analysis || null;
     const G = Object.assign({}, T);
-    PA.synthesize(G, state.metrics, state.analysis);
+    try { PA.synthesize(G, state.metrics, state.analysis); }
+    catch (e) { console.warn(e); showAlerts([...(state.alerts || []), { level: 'error', code: 'crash', msg: e.message }]); }
     state.G = G;
     Object.assign(state.settings, { family: $('family').value || 'Ma Police', style: $('style').value || 'Regular', version: $('version').value || '1.000', spacing: +$('spacing').value / 100, tracking: +$('tracking').value });
-    const { font } = PA.buildFont(G, state.metrics, state.settings, state.analysis);
-    state.font = font; state.otf = font.toArrayBuffer();
+    try { const { font } = PA.buildFont(G, state.metrics, state.settings, state.analysis); state.font = font; state.otf = font.toArrayBuffer(); }
+    catch (e) { console.warn(e); showAlerts([...(state.alerts || []), { level: 'error', code: 'crash', msg: e.message }]); return; }
     // validation : relecture de l'OTF
     try { const re = opentype.parse(state.otf); $('valid').textContent = `✓ ${tr('statusBuilt')} : ${re.glyphs.length} glyphes, ${tr('valid')}.`; }
     catch (e) { $('valid').textContent = '⚠ ' + e.message; }

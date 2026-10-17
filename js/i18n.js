@@ -4,6 +4,12 @@
   const PA = root.PA = root.PA || {};
   const T = {
     fr: {
+      method: 'Méthode de seuil', methodOtsu: 'Global (Otsu, éclairage corrigé)', methodSauvola: 'Adaptatif (Sauvola)', working: 'Analyse en cours…', resized: 'Image réduite de {a} à {b} px pour l\'analyse.',
+      w_notFound: 'Planche introuvable : les 4 marques noires doivent être visibles, feuille en portrait. Passage en mode texte libre impossible en mode « Planche ».',
+      w_notFoundAuto: 'Aucune planche détectée : l\'image est lue comme du texte libre.', w_fewCells: 'Seules {n} cases sur {total} contiennent une lettre lisible.',
+      w_removed: '{n} éléments parasites ignorés (bords, traits de cadre, poussières).', w_countMismatch: '{found} formes trouvées pour {expected} caractères attendus : vérifiez les attributions (cliquez sur les boîtes).',
+      w_tplInFree: 'Planche modèle reconnue : elle est lue case par case (plus fiable que le texte libre).',
+      w_giant: 'Glyphe « {key} » rejeté (taille aberrante).', w_noGlyph: 'Aucune lettre exploitable : augmentez le contraste ou changez de méthode de seuil.', w_crash: 'Erreur inattendue : {msg}', w_load: 'Impossible de lire cette image : {msg}',
       tagline: "Fabrique de police à partir d'une image — 100 % local, libre et gratuit",
       s1: '1. Image', s2: '2. Nettoyage & segmentation', s3: 'Analyse de la structure', s4: '4. Glyphes', s5: '5. Aperçu', s6: '6. Export',
       drop: 'Déposez une image (PNG, JPG, WebP) ou cliquez pour choisir', mode: 'Mode', modeAuto: 'Automatique', modeTpl: 'Planche modèle', modeFree: 'Texte libre (alphabet dans l\'ordre)',
@@ -22,6 +28,11 @@
       kabNote: '', fileHelp: 'Installer : Mac → double-clic puis « Installer » (Livre des polices). Windows → clic droit > Installer.'
     },
     en: {
+      method: 'Threshold method', methodOtsu: 'Global (Otsu, lighting corrected)', methodSauvola: 'Adaptive (Sauvola)', working: 'Analysing…', resized: 'Image reduced from {a} to {b} px for analysis.',
+      w_notFound: 'Template not found: the 4 black marks must be visible, sheet in portrait.', w_notFoundAuto: 'No template detected: the image is read as free text.', w_fewCells: 'Only {n} of {total} boxes contain a readable letter.',
+      w_removed: '{n} stray elements ignored (edges, frame lines, specks).', w_countMismatch: '{found} shapes found for {expected} expected characters: check the assignments (click the boxes).',
+      w_tplInFree: 'Template sheet recognised: it is read box by box (more reliable than free text).',
+      w_giant: 'Glyph “{key}” rejected (abnormal size).', w_noGlyph: 'No usable letter: raise the contrast or change the threshold method.', w_crash: 'Unexpected error: {msg}', w_load: 'Cannot read this image: {msg}',
       tagline: 'Turn an image into a font — 100% local, free and open source',
       s1: '1. Image', s2: '2. Clean-up & segmentation', s3: 'Structure analysis', s4: '4. Glyphs', s5: '5. Preview', s6: '6. Export',
       drop: 'Drop an image (PNG, JPG, WebP) or click to choose', mode: 'Mode', modeAuto: 'Automatic', modeTpl: 'Template sheet', modeFree: 'Free text (alphabet in order)',
@@ -40,6 +51,11 @@
       kabNote: '', fileHelp: 'Install: Mac → double-click then “Install” (Font Book). Windows → right-click > Install.'
     },
     kab: { // Taqbaylit — tasuqqilt s wazal n tazwart, ilaq ad tettwasenqed
+      method: 'Tarrayt n umnar', methodOtsu: 'Amatu (Otsu)', methodSauvola: 'Amsezwer (Sauvola)', working: 'Tasleḍt tetteddu…', resized: 'Tugna tettwasemẓi seg {a} ɣer {b} px.',
+      w_notFound: 'Ur tettwaf ara tewriqt : 4 n tecraḍ tiberkanin ilaq ad banent.', w_notFoundAuto: 'Ulac tawriqt : tugna tettwaɣer am uḍris ilelli.', w_fewCells: '{n} kan seg {total} n tenkulin i yesɛan asekkil.',
+      w_removed: '{n} n yiferdisen ur nelli ara d isekkilen ttwazeglen.', w_countMismatch: '{found} n talɣiwin ttwafent i {expected} n isekkilen : senqed iseɣtiyen.',
+      w_tplInFree: 'Tawriqt tamudemt tettwassen : tettwaɣer tanekult s tanekult.',
+      w_giant: 'Asekkil « {key} » yettwagi (teɣzi ur nelli d tagnit).', w_noGlyph: 'Ulac asekkil : sali anemgal.', w_crash: 'Tuccḍa : {msg}', w_load: 'Ur tettwaɣer ara tugna : {msg}',
       tagline: 'Ssuffeɣ tasefsit seg tugna — s wudem adigan, tilelli, baṭel',
       s1: '1. Tugna', s2: '2. Asizdeg d beṭṭu', s3: 'Tasleḍt n teɣessa', s4: '4. Isekkilen', s5: '5. Taskant', s6: '6. Asifeḍ',
       drop: 'Sers tugna (PNG, JPG, WebP) neɣ sit i ufran', mode: 'Askar', modeAuto: 'S wudem awurman', modeTpl: 'Tawriqt tamudemt', modeFree: 'Aḍris ilelli (agemmay s umyizwer)',

@@ -42,3 +42,7 @@ button.primary { background:var(--acc); color:#16120a; border-color:var(--acc); 
 textarea#preview { width:100%; min-height:180px; font-size:64px; line-height:1.25; font-family:"PAPreview", system-ui; }
 footer { text-align:center; color:var(--mut); font-size:.8rem; padding:1.5rem; } footer a { color:var(--acc2); }
 @media (max-width:640px) { .editor { grid-template-columns:1fr; } h1 { font-size:1.15rem; } }
+.alerts:empty { display:none; } .alerts { display:flex; flex-direction:column; gap:.35rem; margin:.4rem 0; }
+.alert { border-radius:9px; padding:.45rem .7rem; font-size:.86rem; border:1px solid; }
+.alert.error { background:#3a1518; border-color:#7a2a30; color:#ffb4b4; } .alert.warn { background:#3a2f12; border-color:#7a6224; color:#ffd98a; } .alert.info { background:#14303a; border-color:#245a6a; color:#a8e6f5; }
+.busy { opacity:.6; pointer-events:none; }

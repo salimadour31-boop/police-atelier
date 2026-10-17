@@ -36,6 +36,7 @@
     <div class="controls">
       <label><span data-i18n="levels"></span><span class="pair"><input type="range" id="black" min="0" max="200" value="0"><input type="range" id="white" min="55" max="255" value="255"></span></label>
       <label><span data-i18n="thresh"></span> <output id="threshOut"></output><span class="pair"><input type="range" id="thresh" min="1" max="254" value="128" disabled><label class="mini"><input type="checkbox" id="threshAuto" checked> <span data-i18n="auto"></span></label></span></label>
+      <label><span data-i18n="method"></span><select id="method"><option value="otsu" data-i18n="methodOtsu"></option><option value="sauvola" data-i18n="methodSauvola"></option></select></label>
       <label><span data-i18n="despeckle"></span><input type="number" id="despeckle" min="0" max="500" value="12"></label>
       <label class="mini"><input type="checkbox" id="deskew" checked> <span data-i18n="deskew"></span></label>
       <label class="mini"><input type="checkbox" id="invert"> <span data-i18n="invert"></span></label>
@@ -46,6 +47,7 @@
       <div class="view"><canvas id="binCanvas" width="10" height="10"></canvas></div>
     </div>
     <p class="status" id="status" data-i18n="noImage" aria-live="polite"></p>
+    <div id="alerts" class="alerts" role="alert" aria-live="assertive"></div>
     <p class="hint" data-i18n="assignHint"></p>
     <div class="assign" id="assign" hidden><label><span data-i18n="assign"></span> <input id="assignInput" maxlength="8" dir="auto"></label><button id="assignOk" class="primary" data-i18n="ok"></button><button id="assignIgnore" data-i18n="ignore"></button></div>
     <button id="addSheet" class="primary" data-i18n="addSheet" disabled></button>
