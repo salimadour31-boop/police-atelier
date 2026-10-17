@@ -56,12 +56,15 @@
         const b = list[j];
         if (b.area < a.area * 1.15 && !(similarStack(a, b))) continue;
         const ov = Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0) + 1;
-        const cx = (a.x0 + a.x1) / 2;
-        if (ov < 0.4 * aw && !(cx >= b.x0 && cx <= b.x1)) continue;
+        const cx = (a.x0 + a.x1) / 2, bcx = (b.x0 + b.x1) / 2;
+        // écart horizontal (0 si chevauchement) : les points manuscrits sont souvent décalés
+        const hgap = ov > 0 ? 0 : -ov;
+        if (hgap > 0.35 * mh) continue;
         const gap = a.y1 < b.y0 ? b.y0 - a.y1 : (a.y0 > b.y1 ? a.y0 - b.y1 : 0);
-        if (gap > 0.55 * mh) continue;
+        if (gap > 0.6 * mh) continue;
         if (gap === 0 && ov > 0) continue; // chevauchement vertical : lettres voisines
-        const d = gap + Math.abs(cx - (b.x0 + b.x1) / 2) * 0.3;
+        if (gap === 0) continue;
+        const d = gap + Math.abs(cx - bcx) * 0.8 + hgap;
         if (d < bestD) { bestD = d; best = j; }
       }
       if (best >= 0) { mergeInto(list[best], a); dead.add(i); }

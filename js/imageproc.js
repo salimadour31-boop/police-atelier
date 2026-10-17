@@ -50,10 +50,11 @@
 
   /** Détection automatique encre claire/fond sombre : bords majoritairement sombres */
   function looksInverted(img) {
-    let s = 0, n = 0; const { w, h, data } = img;
-    for (let x = 0; x < w; x++) { s += data[x] + data[(h - 1) * w + x]; n += 2; }
-    for (let y = 0; y < h; y++) { s += data[y * w] + data[y * w + w - 1]; n += 2; }
-    return s / n < 110;
+    // Médiane de la zone centrale : la page occupe le centre, les bords peuvent être une table sombre.
+    const { w, h, data } = img, hist = new Uint32Array(256); let n = 0;
+    for (let y = Math.floor(h * 0.2); y < h * 0.8; y += 3) for (let x = Math.floor(w * 0.2); x < w * 0.8; x += 3) { hist[data[y * w + x]]++; n++; }
+    let acc = 0, v = 0; for (; v < 256; v++) { acc += hist[v]; if (acc >= n / 2) break; }
+    return v < 100;
   }
 
   /** Supprime les composantes plus petites que minArea (poussières) */
@@ -149,6 +150,59 @@
     return { w: W, h: H, data: d };
   }
 
-  Object.assign(PA, { toGray, levels, otsu, threshold, looksInverted, despeckle, rotate, estimateSkew, homography, warpPerspective, downscale });
+  /** Estimation du fond (papier) : 90e centile par blocs, interpolé bilinéairement.
+   *  En divisant l'image par ce fond, on aplatit l'éclairage inégal (ombre, dégradé). */
+  function estimateBackground(img, block, invert) {
+    const { w, h, data } = img, bw = Math.ceil(w / block), bh = Math.ceil(h / block), B = new Float32Array(bw * bh);
+    const hist = new Uint32Array(256);
+    for (let by = 0; by < bh; by++) for (let bx = 0; bx < bw; bx++) {
+      hist.fill(0); let n = 0;
+      for (let y = by * block; y < Math.min(h, (by + 1) * block); y += 2) for (let x = bx * block; x < Math.min(w, (bx + 1) * block); x += 2) { hist[data[y * w + x]]++; n++; }
+      const target = (invert ? 0.1 : 0.9) * n; let acc = 0, v = 0;
+      for (; v < 256; v++) { acc += hist[v]; if (acc >= target) break; }
+      B[by * bw + bx] = v;
+    }
+    // lissage 3x3 des blocs pour éviter les marches
+    const S = new Float32Array(B.length);
+    for (let y = 0; y < bh; y++) for (let x = 0; x < bw; x++) { let s = 0, n = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const xx = x + dx, yy = y + dy; if (xx >= 0 && yy >= 0 && xx < bw && yy < bh) { s += B[yy * bw + xx]; n++; } } S[y * bw + x] = s / n; }
+    return { bw, bh, block, B: S };
+  }
+  /** Aplatit l'éclairage et normalise en « encre sombre sur papier blanc ».
+   *  invert : true/false/'auto'. Renvoie {w,h,data,inverted}. */
+  function flatten(img, block = 48, invert = 'auto') {
+    const inv = invert === 'auto' ? looksInverted(img) : !!invert;
+    let src = img;
+    if (inv) { const d = new Uint8Array(img.data.length); for (let i = 0; i < d.length; i++) d[i] = 255 - img.data[i]; src = { w: img.w, h: img.h, data: d }; }
+    const bg = estimateBackground(src, block, false), { w, h, data } = src, d = new Uint8Array(w * h);
+    for (let y = 0; y < h; y++) {
+      const fy = Math.min(bg.bh - 1.001, Math.max(0, y / block - 0.5)), y0 = Math.floor(fy), ty = fy - y0;
+      for (let x = 0; x < w; x++) {
+        const fx = Math.min(bg.bw - 1.001, Math.max(0, x / block - 0.5)), x0 = Math.floor(fx), tx = fx - x0, i = y0 * bg.bw + x0;
+        const i1 = Math.min(i + 1, bg.B.length - 1), i2 = Math.min(i + bg.bw, bg.B.length - 1), i3 = Math.min(i + bg.bw + 1, bg.B.length - 1);
+        const b = bg.B[i] * (1 - tx) * (1 - ty) + bg.B[i1] * tx * (1 - ty) + bg.B[i2] * (1 - tx) * ty + bg.B[i3] * tx * ty;
+        d[y * w + x] = Math.min(255, Math.round(data[y * w + x] * 255 / Math.max(24, b)));
+      }
+    }
+    return { w, h, data: d, inverted: inv };
+  }
+  /** Seuillage adaptatif de Sauvola (images intégrales) : T = m · (1 + k (s/R − 1)) */
+  function sauvola(img, win, k = 0.2, R = 128) {
+    const { w, h, data } = img, W = w + 1, I = new Float64Array(W * (h + 1)), I2 = new Float64Array(W * (h + 1));
+    for (let y = 0; y < h; y++) { let s = 0, s2 = 0; for (let x = 0; x < w; x++) { const v = data[y * w + x]; s += v; s2 += v * v; I[(y + 1) * W + x + 1] = I[y * W + x + 1] + s; I2[(y + 1) * W + x + 1] = I2[y * W + x + 1] + s2; } }
+    const r = win >> 1, d = new Uint8Array(w * h);
+    for (let y = 0; y < h; y++) {
+      const y0 = Math.max(0, y - r), y1 = Math.min(h, y + r + 1);
+      for (let x = 0; x < w; x++) {
+        const x0 = Math.max(0, x - r), x1 = Math.min(w, x + r + 1), n = (x1 - x0) * (y1 - y0);
+        const s = I[y1 * W + x1] - I[y0 * W + x1] - I[y1 * W + x0] + I[y0 * W + x0];
+        const s2 = I2[y1 * W + x1] - I2[y0 * W + x1] - I2[y1 * W + x0] + I2[y0 * W + x0];
+        const m = s / n, sd = Math.sqrt(Math.max(0, s2 / n - m * m));
+        d[y * w + x] = data[y * w + x] <= m * (1 + k * (sd / R - 1)) ? 1 : 0;
+      }
+    }
+    return { w, h, data: d };
+  }
+
+  Object.assign(PA, { estimateBackground, flatten, sauvola, toGray, levels, otsu, threshold, looksInverted, despeckle, rotate, estimateSkew, homography, warpPerspective, downscale });
   if (typeof module !== 'undefined') module.exports = PA;
 })(typeof self !== 'undefined' ? self : globalThis);
