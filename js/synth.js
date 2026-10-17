@@ -232,7 +232,8 @@
     }
     // repli de casse
     const other = key === key.toUpperCase() ? key.toLowerCase() : key.toUpperCase();
-    if (other !== key && /^[A-Za-z]$/.test(key) && G[other] && G[other].source !== 'generated') {
+    // repli de casse seulement quand minuscule et capitale ont le même dessin (c/C, o/O, s/S…)
+    if (other !== key && /^[cosuvwxzCOSUVWXZ]$/.test(key) && G[other] && G[other].source !== 'generated') {
       const g = G[other], s = key === key.toLowerCase() ? m.xHeight / m.capHeight : m.capHeight / m.xHeight;
       return makeRec(key, transform(g.contours, [s, 0, 0, s, 0, 0]), 'derived', `${g.key} mis à l'échelle`);
     }
@@ -242,6 +243,54 @@
     }
     return null;
   }
+  /** Édition raster : contours -> bitmap (0,25 px/unité) -> fonction d'édition -> retracé en unités */
+  function rasterEdit(contours, edit, pad = 200) {
+    const r = 0.25, b = PA.bboxOf(contours), x0 = b.xMin - pad, y1 = b.yMax + pad;
+    const w = Math.ceil((b.xMax - b.xMin + 2 * pad) * r), h = Math.ceil((b.yMax - b.yMin + 2 * pad) * r);
+    const bm = PA.rasterize(contours, w, h, (x, y) => [(x - x0) * r, (y1 - y) * r]);
+    const U = { px: x => (x - x0) * r, py: y => (y1 - y) * r, ux: p => p / r + x0, uy: p => y1 - p / r };
+    edit(bm, U);
+    const rec = { contours: PA.traceBitmap(bm, { error: 0.7 }).map(c => c.map(q => { const o = []; for (let i = 0; i < 8; i += 2) o.push(U.ux(q[i]), U.uy(q[i + 1])); return o; })) };
+    PA.normalizeOrientation(rec); return rec.contours;
+  }
+  function thickLine(bm, ax, ay, bx, by, hw) {
+    const vx = bx - ax, vy = by - ay, L2 = vx * vx + vy * vy || 1;
+    for (let y = Math.max(0, Math.floor(Math.min(ay, by) - hw)); y <= Math.min(bm.h - 1, Math.ceil(Math.max(ay, by) + hw)); y++)
+      for (let x = Math.max(0, Math.floor(Math.min(ax, bx) - hw)); x <= Math.min(bm.w - 1, Math.ceil(Math.max(ax, bx) + hw)); x++) {
+        let u = ((x + .5 - ax) * vx + (y + .5 - ay) * vy) / L2; u = Math.max(0, Math.min(1, u));
+        if (Math.hypot(x + .5 - ax - u * vx, y + .5 - ay - u * vy) <= hw) bm.data[y * bm.w + x] = 1;
+      }
+  }
+  /** R = P + jambe diagonale (graisse mesurée) ; r = n sans son fût droit */
+  function deriveStructural(key, G, m, t) {
+    if (key === 'R' && G.P && G.P.source !== 'generated') {
+      const P = G.P, b = P.bbox;
+      const c = rasterEdit(P.contours, (bm, U) => {
+        // bas de la panse : plus basse ligne avec de l'encre dans le tiers droit, sous la moitié de la hauteur
+        let yb = U.py(b.yMax * 0.5);
+        for (let y = Math.round(U.py(b.yMax * 0.75)); y < U.py(b.yMax * 0.15); y++) { let ink = false; for (let x = Math.round(U.px(b.xMin + 0.62 * (b.xMax - b.xMin))); x < U.px(b.xMax); x++) if (bm.data[y * bm.w + x]) { ink = true; break; } if (ink) yb = y; }
+        thickLine(bm, U.px(b.xMin + 0.42 * (b.xMax - b.xMin)), yb - t * 0.25 * 0.5, U.px(b.xMax + 0.08 * (b.xMax - b.xMin)), U.py(0) - t * 0.25 * 0.5, t * 0.25 / 2);
+        for (let x = 0; x < bm.w; x++) for (let y = Math.round(U.py(0)); y < bm.h; y++) bm.data[y * bm.w + x] = 0; // coupe sous la ligne de base
+      });
+      return makeRec('R', c, 'derived', 'P + jambe');
+    }
+    if (key === 'r' && G.n && G.n.source !== 'generated') {
+      const n = G.n, b = n.bbox;
+      const c = rasterEdit(n.contours, (bm, U) => {
+        // début du fût droit : 2e plage d'encre sur une ligne proche du bas
+        const y = Math.round(U.py(m.xHeight * 0.15)); let runs = [], inside = false;
+        for (let x = 0; x < bm.w; x++) { const v = bm.data[y * bm.w + x]; if (v && !inside) runs.push(x); inside = !!v; }
+        const xs = runs.length >= 2 ? runs[1] : Math.round(U.px(b.xMin + 0.6 * (b.xMax - b.xMin)));
+        const cutLow = Math.round(U.py(m.xHeight * 0.62));
+        for (let yy = cutLow; yy < bm.h; yy++) for (let x = xs - 1; x < bm.w; x++) bm.data[yy * bm.w + x] = 0;  // fût droit supprimé
+        const keep = xs + Math.round((xs - Math.round(U.px(b.xMin))) * 0.12);
+        for (let yy = 0; yy < bm.h; yy++) for (let x = keep; x < bm.w; x++) bm.data[yy * bm.w + x] = 0;           // arche raccourcie
+      });
+      return makeRec('r', c, 'derived', 'n sans fût droit');
+    }
+    return null;
+  }
+
   /** Ligatures-collages : œ = o+e, æ = a+e (et capitales) */
   function juxtapose(key, a, b, m) {
     const ov = Math.max(20, m.xHeight * 0.06);
@@ -321,7 +370,7 @@
     const getMark = mk => marks[mk] || (marks[mk] = genMark(mk, m, t));
     // passe 1 : bases (dérivation puis génération)
     const bases = [...PA.REQUIRED, 'ɛ', 'ɣ'];
-    for (let pass = 0; pass < 2; pass++) for (const k of bases) if (!G[k]) { const r = derive(k, G, m); if (r) put(r); }
+    for (let pass = 0; pass < 2; pass++) for (const k of bases) if (!G[k]) { const r = deriveStructural(k, G, m, t) || derive(k, G, m); if (r) put(r); }
     for (const k of bases) if (!G[k]) put(generate(k, m, t));
     // passe 2 : composés (français, kabyle, capitales accentuées)
     const composed = [...PA.FRENCH, ...PA.KABYLE, ...PA.UPPER_EXTRA];
@@ -337,6 +386,6 @@
     return added;
   }
 
-  Object.assign(PA, { transform, translate, toOrigin, makeRec, skeleton, strokeOutline, generate, extractMarks, genMark, compose, derive, synthesize });
+  Object.assign(PA, { rasterEdit, deriveStructural, transform, translate, toOrigin, makeRec, skeleton, strokeOutline, generate, extractMarks, genMark, compose, derive, synthesize });
   if (typeof module !== 'undefined') module.exports = PA;
 })(typeof self !== 'undefined' ? self : globalThis);

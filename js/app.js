@@ -166,12 +166,18 @@
     }
   });
   // attribution manuelle
+  /** « Assigner depuis l'image » : le prochain clic sur une boîte lui donne ce caractère */
+  function startAssign(k) {
+    if (!state.run) { setStatus(tr('noImage')); return; }
+    state.assignTarget = k; setStatus(fmt(tr('pickBoxFor'), { k })); $('binView').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
   $('binCanvas').addEventListener('click', e => {
     if (!state.run) return; const [x, y] = canvasPoint($('binCanvas'), e);
     const items = state.run.extract.items;
     // la plus petite boîte qui contient le clic (les signes fusionnés agrandissent les boîtes)
     let best = -1, ba = Infinity;
     items.forEach((it, i) => { const c = it.comp; if (x >= c.x0 - 4 && x <= c.x1 + 4 && y >= c.y0 - 4 && y <= c.y1 + 4) { const a = (c.x1 - c.x0) * (c.y1 - c.y0); if (a < ba) { ba = a; best = i; } } });
+    if (best >= 0 && state.assignTarget) { const k = state.assignTarget; state.assignTarget = null; state.pickItem = best; reassign(k); return; }
     if (best >= 0) openBox(best); else closeBox();
   });
   function reassign(val) {
@@ -235,28 +241,43 @@
     if (guides) { ctx.strokeStyle = '#2c3340'; ctx.lineWidth = 1; for (const y of [0, m.xHeight, m.capHeight, m.descender, m.ascender]) { ctx.beginPath(); ctx.moveTo(0, (top - y) * s); ctx.lineTo(W, (top - y) * s); ctx.stroke(); } }
     ctx.beginPath();
     for (const c of g.contours) { if (!c.length) continue; ctx.moveTo(X(c[0][0]), Y(c[0][1])); for (const q of c) ctx.bezierCurveTo(X(q[2]), Y(q[3]), X(q[4]), Y(q[5]), X(q[6]), Y(q[7])); ctx.closePath(); }
-    ctx.fillStyle = g.source === 'generated' ? '#ff8f8f' : g.source === 'derived' ? '#b7c5ff' : '#ece8df'; ctx.fill('nonzero');
+    ctx.fillStyle = COL[g.source] || '#fff'; ctx.fill('nonzero');
   }
+  // couleurs de la grille (identiques à la légende) : tracé = crème, dérivé = bleu, généré = gris
+  const COL = { traced: '#f3efe6', derived: '#7fa8ff', generated: '#7b8494' };
   function renderGrid() {
     const grid = $('grid'); grid.innerHTML = '';
     const keys = Object.keys(state.G), n = { traced: 0, derived: 0, generated: 0 };
     const order = [...PA.REQUIRED, ...PA.FRENCH, ...PA.KABYLE, 'ɛ', 'ɣ', ...PA.UPPER_EXTRA, ...PA.ARABIC_SHEET, 'لا.fina'];
     keys.sort((a, b) => (order.indexOf(a) + 1 || 999) - (order.indexOf(b) + 1 || 999));
-    for (const k of keys) {
-      const g = state.G[k]; n[g.source]++;
-      const d = document.createElement('div'); d.className = 'cell ' + g.source + (g.suspect ? ' suspect' : '') + (state.selected === k ? ' sel' : ''); d.title = `${k} — ${tr(g.source)}${g.from ? ' (' + g.from + ')' : ''}`;
+    // cases attendues mais absentes : affichées explicitement « manquant »
+    const hasAr = keys.some(PA.isArabicKey), expectedKeys = [...PA.LATIN_SHEET, ...(hasAr ? PA.ARABIC_SHEET : [])];
+    const all = [...keys, ...expectedKeys.filter(k => !state.G[k])];
+    all.sort((a, b) => (order.indexOf(a) + 1 || 999) - (order.indexOf(b) + 1 || 999));
+    for (const k of all) {
+      const g = state.G[k], d = document.createElement('div');
+      if (!g) {
+        d.className = 'cell missing'; d.title = `${k} — ${tr('missing')}`;
+        d.innerHTML = `<div class="miss">${tr('missing')}</div><div class="k"></div>`; d.querySelector('.k').textContent = PA.labelOf(k);
+        const bt = document.createElement('button'); bt.className = 'mini-btn'; bt.textContent = tr('assignFromImage'); bt.onclick = ev => { ev.stopPropagation(); startAssign(k); }; d.append(bt);
+        grid.append(d); continue;
+      }
+      n[g.source]++;
+      d.className = 'cell ' + g.source + (g.suspect ? ' suspect' : '') + (state.selected === k ? ' sel' : ''); d.title = `${k} — ${tr(g.source)}${g.from ? ' (' + g.from + ')' : ''}`;
       const cv = document.createElement('canvas'); cv.width = 72; cv.height = 72; drawGlyph(cv, g, false);
-      d.append(cv); const lab = document.createElement('div'); lab.className = 'k'; lab.textContent = PA.labelOf(k) + (g.source !== 'traced' ? ' •' : ''); d.append(lab);
+      d.append(cv); const lab = document.createElement('div'); lab.className = 'k'; lab.innerHTML = `<i class="dot ${g.source}"></i>`; lab.append(PA.labelOf(k)); d.append(lab);
       d.onclick = () => { state.selected = k; renderGrid(); renderEditor(); };
       grid.append(d);
     }
-    $('counts').textContent = keys.length ? `${keys.length} glyphes — ${tr('traced')} ${n.traced} · ${tr('derived')} ${n.derived} · ${tr('generated')} ${n.generated}` : '';
+    $('counts').innerHTML = keys.length ? `${keys.length} glyphes — <i class="dot traced"></i>${tr('traced')} ${n.traced} · <i class="dot derived"></i>${tr('derived')} ${n.derived} · <i class="dot generated"></i>${tr('generated')} ${n.generated}` : '';
+    if (keys.length && n.traced < 10) $('counts').innerHTML += ` — <b class="warnTxt">${tr('fewTraced')}</b>`;
   }
   function renderEditor() {
     const k = state.selected, g = state.G[k]; $('editor').hidden = !g; if (!g) return;
     const a = state.settings.adjust[k] || {};
     $('edKey').textContent = `« ${PA.labelOf(k)} »  U+${(PA.glyphInfo(k).unicodes[0] || 0).toString(16).toUpperCase()}`;
     $('edSrc').textContent = `${tr(g.source)}${g.from ? ' — ' + g.from : ''}`;
+    $('edAssign').textContent = tr('assignFromImage'); $('edAssign').onclick = () => startAssign(k);
     $('edDy').value = a.dy || 0; $('edScale').value = Math.round((a.scale ?? 1) * 100); $('edLsb').value = a.lsb || 0; $('edRsb').value = a.rsb || 0;
     drawGlyph($('glyphCanvas'), g, true);
   }

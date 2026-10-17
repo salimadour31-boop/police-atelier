@@ -67,13 +67,13 @@
 
   <section class="card wide" id="sec-glyphs">
     <h2 data-i18n="s4"></h2>
-    <p class="legend"><span class="b traced" data-i18n="traced"></span><span class="b derived" data-i18n="derived"></span><span class="b generated" data-i18n="generated"></span> <small data-i18n="legend"></small></p>
+    <p class="legend"><span class="b traced"><i class="dot traced"></i><span data-i18n="traced"></span></span><span class="b derived"><i class="dot derived"></i><span data-i18n="derived"></span></span><span class="b generated"><i class="dot generated"></i><span data-i18n="generated"></span></span><span class="b missingB" data-i18n="missing"></span> <small data-i18n="legend"></small></p>
     <p class="counts" id="counts"></p>
     <div class="grid" id="grid"></div>
     <div class="editor" id="editor" hidden>
       <canvas id="glyphCanvas" width="320" height="320"></canvas>
       <div class="controls">
-        <h3 id="edKey"></h3><p id="edSrc" class="small"></p>
+        <h3 id="edKey"></h3><p id="edSrc" class="small"></p><button id="edAssign"></button>
         <label><span data-i18n="baseline"></span><input type="range" id="edDy" min="-200" max="200" value="0"></label>
         <label><span data-i18n="scale"></span><input type="range" id="edScale" min="50" max="150" value="100"></label>
         <label><span data-i18n="lsb"></span><input type="range" id="edLsb" min="-150" max="250" value="0"></label>

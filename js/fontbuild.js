@@ -31,7 +31,7 @@
     const t = (analysis && analysis.weight) || 80;
     // approches proportionnelles à l'épaisseur du fût, réduites côté rond (o, c, e…)
     const baseSB = Math.round((20 + 0.6 * t) * (settings.spacing ?? 1));
-    const ROUND_L = /^[CGOQcdeoqæœ0369@ɛƐ]$/, ROUND_R = /^[BDOPQbopæœ068@9]$/;
+    const ROUND_L = /^[CGOQcdeoqæœ0369@ɛƐ]$/, ROUND_R = /^[BDOPQbopceæœ068@9]$/;
     // côtés « ouverts » (diagonales, bras) : approche réduite davantage
     const OPEN_L = /^[AJTVWYjvwxy]$/, OPEN_R = /^[FPTVWYfrtvwxy7]$/;
     const sideF = (key, side) => (side === 'L' ? (OPEN_L.test(key) ? 0.5 : ROUND_L.test(key) ? 0.7 : 1) : (OPEN_R.test(key) ? 0.5 : ROUND_R.test(key) ? 0.7 : 1));

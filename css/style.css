@@ -33,7 +33,7 @@ button.primary { background:var(--acc); color:#16120a; border-color:var(--acc); 
 .assign { display:flex; gap:.5rem; align-items:end; flex-wrap:wrap; }
 .stats { display:grid; grid-template-columns:1fr auto; gap:.25rem .8rem; margin:0; } .stats dt { color:var(--mut); } .stats dd { margin:0; font-variant-numeric:tabular-nums; text-align:right; }
 .legend .b, .cell .b { font-size:.7rem; padding:.05rem .4rem; border-radius:20px; margin-right:.3rem; }
-.b.traced { background:#1f3b36; color:var(--acc2); } .b.derived { background:#232c4d; color:var(--der); } .b.generated { background:#4a2125; color:var(--gen); }
+.b.traced { background:#2a2925; color:#f3efe6; } .b.derived { background:#1d2a4a; color:#9dbcff; } .b.generated { background:#262a31; color:#a9b0bd; border:1px dashed #5c6370; } .b.missingB { border:1px dashed #a04b52; color:#ff9a9a; }
 .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(74px,1fr)); gap:.4rem; max-height:460px; overflow:auto; padding:.2rem; }
 .cell { background:#0d0f13; border:1px solid var(--line); border-radius:9px; padding:.25rem; cursor:pointer; text-align:center; position:relative; }
 .cell.sel { border-color:var(--acc); } .cell canvas { width:100%; height:auto; display:block; }
@@ -54,3 +54,10 @@ footer { text-align:center; color:var(--mut); font-size:.8rem; padding:1.5rem; }
 .sw.ok { border-color:#5ad1c4; } .sw.sus { border-color:#ffa53a; } .sw.none { border-color:#ff5a5a; background:#ff5a5a33; }
 .chips { display:flex; flex-wrap:wrap; gap:.25rem; } .chips button { padding:.1rem .5rem; font-size:.9rem; border-color:#7a2a30; } .chips .lab { font-size:.8rem; color:var(--mut); }
 .cell.suspect { border-color:#ffa53a; }
+.legend .b { display:inline-flex; align-items:center; gap:.3rem; font-size:.8rem; padding:.15rem .55rem; }
+.dot { width:.62rem; height:.62rem; border-radius:50%; display:inline-block; vertical-align:middle; margin-right:.2rem; }
+.dot.traced { background:#f3efe6; } .dot.derived { background:#7fa8ff; } .dot.generated { background:#7b8494; }
+.cell.generated { border-style:dashed; border-color:#4a505c; } .cell.derived { border-color:#2d3d66; }
+.cell.missing { border:1px dashed #a04b52; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:.2rem; min-height:96px; }
+.cell .miss { color:#ff9a9a; font-size:.68rem; } .mini-btn { font-size:.64rem; padding:.1rem .3rem; }
+.warnTxt { color:#ffd98a; font-weight:600; }

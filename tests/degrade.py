@@ -69,6 +69,9 @@ if __name__ == '__main__':
     FULL = ['ABCDEFGHIJKLM', 'NOPQRSTUVWXYZ', 'abcdefghijklm', 'nopqrstuvwxyz', '0123456789', 'éèêàçùôîëïûœæ', '.,;:!?\'"-()']
     alphabet_photo(AV, d + 'photo-alphabet-accents.jpg', size=110, lines=FULL, tilt=2.5, stray=True)
     alphabet_photo(AV, d + 'photo-alphabet-serre.jpg', size=110, lines=['ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz', '0123456789'], tilt=-3, spacing=1.25, W=3400)
+    QS = FONTS + 'Quicksand/' + [f for f in os.listdir(FONTS + 'Quicksand') if f.endswith('.ttf')][0]
+    alphabet_photo(QS, d + 'quicksand-alphabet.jpg', size=120)
+    alphabet_photo(QS, d + 'quicksand-sans-Rr.jpg', size=120, lines=['ABCDEFGHIJKLMNOPQ', 'STUVWXYZ', 'abcdefghijklmnopq', 'stuvwxyz', '0123456789'])
     # encre claire sur fond sombre (craie / négatif)
     im = Image.open(d + 'serif-gras.png').convert('L'); Image.eval(im, lambda v: 255 - v).save(d + 'negatif-serif.png')
     print('ok')

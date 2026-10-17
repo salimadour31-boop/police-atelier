@@ -165,6 +165,14 @@
       comps = [...lines.keys()].sort((a, b) => a - b).flatMap(k => lines.get(k).reverse());
     }
     // 4) alignement : composantes en trop = non attribuées, caractères manquants signalés
+    // trop peu de formes pour l'alphabet attendu : on ne devine pas, l'utilisateur étiquette
+    if (comps.length < Math.max(4, 0.25 * chars.length)) {
+      warnings.push({ level: 'warn', code: 'fewShapes', n: comps.length, expected: chars.length });
+      const items0 = comps.map(c => ({ key: null, comp: c, line: c.line, suspect: true }));
+      PA.measure(comps); assignBaselines(items0);
+      const sc = 700 / (PA.median(comps.map(c => c.y1 - c.y0 + 1)) || 1); items0.forEach(it => it.scale = sc);
+      return { kind: 'free', items: items0, bin: cleaned.bin, gray: cleaned.gray, rtl, missing: chars };
+    }
     const al = PA.align(comps, chars, { bin: cleaned.bin });
     const items = al.pairs.map(p => ({ key: p.key, comp: p.comp, line: p.comp.line, suspect: p.suspect || (p.key && !PA.plausibility(p.comp, p.key).ok) }));
     if (!al.exact) warnings.push({ level: 'warn', code: 'countMismatch', found: comps.length, expected: chars.length, extra: al.extra.length, missing: al.missing.join(' ') || '—' });
@@ -235,7 +243,8 @@
       else if (opts.mode === 'template') { warnings.push({ level: 'error', code: 'notFound' }); return { mode: 'none', glyphs: [], extract: { kind: 'none', items: [], bin: cleaned.bin }, cleaned, warnings }; }
     }
     if (!ex) {
-      if (opts.deskew !== false) cleaned = deskew(cleaned);
+      // redressement seulement s'il y a assez de texte (une lettre isolée penchée n'est pas une page de travers)
+      if (opts.deskew !== false && PA.components(cleaned.bin).filter(c => c.area > 20).length >= 12) cleaned = deskew(cleaned);
       ex = extractFree(cleaned, opts.alphabet || PA.LATIN_SHEET.slice(0, 62).join(''), warnings);
     }
     const glyphs = [];
@@ -245,7 +254,7 @@
       if (b.yMax - b.yMin > 2600 || b.xMax - b.xMin > 3000 || !g.contours.length) { warnings.push({ level: 'warn', code: 'giant', key: it.key }); it.rejected = true; continue; }
       g.suspect = !!it.suspect; glyphs.push(g);
     }
-    if (!glyphs.length) warnings.push({ level: 'error', code: 'noGlyph' });
+    if (!glyphs.length && !warnings.some(w => w.code === 'fewShapes')) warnings.push({ level: 'error', code: 'noGlyph' });
     return { mode: ex.kind, glyphs, extract: ex, cleaned, warnings };
   }
 
