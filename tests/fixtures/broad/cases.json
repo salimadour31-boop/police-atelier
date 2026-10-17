@@ -1,0 +1,234 @@
+[
+ {
+  "name": "quicksand-3lignes-blanc",
+  "file": "tests/fixtures/broad/quicksand-3lignes-blanc.png"
+ },
+ {
+  "name": "quicksand-3lignes-sombre",
+  "file": "tests/fixtures/broad/quicksand-3lignes-sombre.png"
+ },
+ {
+  "name": "quicksand-3lignes-couleur",
+  "file": "tests/fixtures/broad/quicksand-3lignes-couleur.png"
+ },
+ {
+  "name": "quicksand-3lignes-bleu-blanc",
+  "file": "tests/fixtures/broad/quicksand-3lignes-bleu-blanc.png"
+ },
+ {
+  "name": "quicksand-1ligne-espaces-blanc",
+  "file": "tests/fixtures/broad/quicksand-1ligne-espaces-blanc.png"
+ },
+ {
+  "name": "quicksand-1ligne-espaces-sombre",
+  "file": "tests/fixtures/broad/quicksand-1ligne-espaces-sombre.png"
+ },
+ {
+  "name": "quicksand-1ligne-espaces-couleur",
+  "file": "tests/fixtures/broad/quicksand-1ligne-espaces-couleur.png"
+ },
+ {
+  "name": "quicksand-1ligne-espaces-bleu-blanc",
+  "file": "tests/fixtures/broad/quicksand-1ligne-espaces-bleu-blanc.png"
+ },
+ {
+  "name": "quicksand-espacees-blanc",
+  "file": "tests/fixtures/broad/quicksand-espacees-blanc.png"
+ },
+ {
+  "name": "quicksand-espacees-sombre",
+  "file": "tests/fixtures/broad/quicksand-espacees-sombre.png"
+ },
+ {
+  "name": "quicksand-espacees-couleur",
+  "file": "tests/fixtures/broad/quicksand-espacees-couleur.png"
+ },
+ {
+  "name": "quicksand-espacees-bleu-blanc",
+  "file": "tests/fixtures/broad/quicksand-espacees-bleu-blanc.png"
+ },
+ {
+  "name": "quicksand-2lignes-blanc",
+  "file": "tests/fixtures/broad/quicksand-2lignes-blanc.png"
+ },
+ {
+  "name": "quicksand-2lignes-sombre",
+  "file": "tests/fixtures/broad/quicksand-2lignes-sombre.png"
+ },
+ {
+  "name": "quicksand-2lignes-couleur",
+  "file": "tests/fixtures/broad/quicksand-2lignes-couleur.png"
+ },
+ {
+  "name": "quicksand-2lignes-bleu-blanc",
+  "file": "tests/fixtures/broad/quicksand-2lignes-bleu-blanc.png"
+ },
+ {
+  "name": "comfortaa-3lignes-blanc",
+  "file": "tests/fixtures/broad/comfortaa-3lignes-blanc.png"
+ },
+ {
+  "name": "comfortaa-3lignes-sombre",
+  "file": "tests/fixtures/broad/comfortaa-3lignes-sombre.png"
+ },
+ {
+  "name": "comfortaa-3lignes-couleur",
+  "file": "tests/fixtures/broad/comfortaa-3lignes-couleur.png"
+ },
+ {
+  "name": "comfortaa-3lignes-bleu-blanc",
+  "file": "tests/fixtures/broad/comfortaa-3lignes-bleu-blanc.png"
+ },
+ {
+  "name": "comfortaa-1ligne-espaces-blanc",
+  "file": "tests/fixtures/broad/comfortaa-1ligne-espaces-blanc.png"
+ },
+ {
+  "name": "comfortaa-1ligne-espaces-sombre",
+  "file": "tests/fixtures/broad/comfortaa-1ligne-espaces-sombre.png"
+ },
+ {
+  "name": "comfortaa-1ligne-espaces-couleur",
+  "file": "tests/fixtures/broad/comfortaa-1ligne-espaces-couleur.png"
+ },
+ {
+  "name": "comfortaa-1ligne-espaces-bleu-blanc",
+  "file": "tests/fixtures/broad/comfortaa-1ligne-espaces-bleu-blanc.png"
+ },
+ {
+  "name": "poppins-3lignes-blanc",
+  "file": "tests/fixtures/broad/poppins-3lignes-blanc.png"
+ },
+ {
+  "name": "poppins-3lignes-sombre",
+  "file": "tests/fixtures/broad/poppins-3lignes-sombre.png"
+ },
+ {
+  "name": "poppins-1ligne-espaces-blanc",
+  "file": "tests/fixtures/broad/poppins-1ligne-espaces-blanc.png"
+ },
+ {
+  "name": "poppins-1ligne-espaces-sombre",
+  "file": "tests/fixtures/broad/poppins-1ligne-espaces-sombre.png"
+ },
+ {
+  "name": "poppins-espacees-blanc",
+  "file": "tests/fixtures/broad/poppins-espacees-blanc.png"
+ },
+ {
+  "name": "poppins-espacees-sombre",
+  "file": "tests/fixtures/broad/poppins-espacees-sombre.png"
+ },
+ {
+  "name": "poppins-2lignes-blanc",
+  "file": "tests/fixtures/broad/poppins-2lignes-blanc.png"
+ },
+ {
+  "name": "poppins-2lignes-sombre",
+  "file": "tests/fixtures/broad/poppins-2lignes-sombre.png"
+ },
+ {
+  "name": "montserrat-3lignes-blanc",
+  "file": "tests/fixtures/broad/montserrat-3lignes-blanc.png"
+ },
+ {
+  "name": "montserrat-3lignes-sombre",
+  "file": "tests/fixtures/broad/montserrat-3lignes-sombre.png"
+ },
+ {
+  "name": "montserrat-1ligne-espaces-blanc",
+  "file": "tests/fixtures/broad/montserrat-1ligne-espaces-blanc.png"
+ },
+ {
+  "name": "montserrat-1ligne-espaces-sombre",
+  "file": "tests/fixtures/broad/montserrat-1ligne-espaces-sombre.png"
+ },
+ {
+  "name": "nunito-3lignes-blanc",
+  "file": "tests/fixtures/broad/nunito-3lignes-blanc.png"
+ },
+ {
+  "name": "nunito-3lignes-sombre",
+  "file": "tests/fixtures/broad/nunito-3lignes-sombre.png"
+ },
+ {
+  "name": "nunito-1ligne-espaces-blanc",
+  "file": "tests/fixtures/broad/nunito-1ligne-espaces-blanc.png"
+ },
+ {
+  "name": "nunito-1ligne-espaces-sombre",
+  "file": "tests/fixtures/broad/nunito-1ligne-espaces-sombre.png"
+ },
+ {
+  "name": "lora-3lignes-blanc",
+  "file": "tests/fixtures/broad/lora-3lignes-blanc.png"
+ },
+ {
+  "name": "lora-3lignes-sombre",
+  "file": "tests/fixtures/broad/lora-3lignes-sombre.png"
+ },
+ {
+  "name": "lora-1ligne-espaces-blanc",
+  "file": "tests/fixtures/broad/lora-1ligne-espaces-blanc.png"
+ },
+ {
+  "name": "lora-1ligne-espaces-sombre",
+  "file": "tests/fixtures/broad/lora-1ligne-espaces-sombre.png"
+ },
+ {
+  "name": "merriweather-3lignes-blanc",
+  "file": "tests/fixtures/broad/merriweather-3lignes-blanc.png"
+ },
+ {
+  "name": "merriweather-3lignes-sombre",
+  "file": "tests/fixtures/broad/merriweather-3lignes-sombre.png"
+ },
+ {
+  "name": "merriweather-1ligne-espaces-blanc",
+  "file": "tests/fixtures/broad/merriweather-1ligne-espaces-blanc.png"
+ },
+ {
+  "name": "merriweather-1ligne-espaces-sombre",
+  "file": "tests/fixtures/broad/merriweather-1ligne-espaces-sombre.png"
+ },
+ {
+  "name": "roboto-slab-3lignes-blanc",
+  "file": "tests/fixtures/broad/roboto-slab-3lignes-blanc.png"
+ },
+ {
+  "name": "roboto-slab-3lignes-sombre",
+  "file": "tests/fixtures/broad/roboto-slab-3lignes-sombre.png"
+ },
+ {
+  "name": "roboto-slab-1ligne-espaces-blanc",
+  "file": "tests/fixtures/broad/roboto-slab-1ligne-espaces-blanc.png"
+ },
+ {
+  "name": "roboto-slab-1ligne-espaces-sombre",
+  "file": "tests/fixtures/broad/roboto-slab-1ligne-espaces-sombre.png"
+ },
+ {
+  "name": "playfair-3lignes-blanc",
+  "file": "tests/fixtures/broad/playfair-3lignes-blanc.png"
+ },
+ {
+  "name": "playfair-3lignes-sombre",
+  "file": "tests/fixtures/broad/playfair-3lignes-sombre.png"
+ },
+ {
+  "name": "playfair-1ligne-espaces-blanc",
+  "file": "tests/fixtures/broad/playfair-1ligne-espaces-blanc.png"
+ },
+ {
+  "name": "playfair-1ligne-espaces-sombre",
+  "file": "tests/fixtures/broad/playfair-1ligne-espaces-sombre.png"
+ },
+ {
+  "name": "quicksand-photo",
+  "file": "tests/fixtures/broad/quicksand-photo.jpg"
+ },
+ {
+  "name": "lora-photo",
+  "file": "tests/fixtures/broad/lora-photo.jpg"
+ }
+]

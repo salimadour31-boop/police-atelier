@@ -246,7 +246,8 @@
       // on cherche toujours la planche : une planche lue « en texte libre » donnerait des glyphes faux
       const corners = detectTemplate(cleaned.bin);
       if (corners) { ex = extractTemplate(cleaned, corners, warnings); if (opts.mode === 'free') warnings.push({ level: 'info', code: 'tplInFree' }); }
-      else if (opts.mode === 'template') { warnings.push({ level: 'error', code: 'notFound' }); return { mode: 'none', glyphs: [], extract: { kind: 'none', items: [], bin: cleaned.bin }, cleaned, warnings }; }
+      // planche demandée mais introuvable : on lit l'image comme un texte libre au lieu de tout laisser vide
+      else if (opts.mode === 'template') warnings.push({ level: 'warn', code: 'notFound' });
     }
     if (!ex) {
       // redressement seulement s'il y a assez de texte (une lettre isolée penchée n'est pas une page de travers)

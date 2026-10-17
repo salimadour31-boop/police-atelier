@@ -4,6 +4,7 @@
   const PA = root.PA = root.PA || {};
   const T = {
     fr: {
+      noneAssigned: '{n} forme(s) trouvée(s) pour {expected} caractères attendus, mais aucune n\'a pu être attribuée. Vérifiez le mode (Planche / Texte libre), le seuil ou « encre claire sur fond sombre », et l\'ordre de l\'alphabet — ou attribuez dans l\'ordre puis corrigez en cliquant sur les boîtes.', assignInOrder: 'Attribuer dans l\'ordre', gridEmpty: 'Déposez une image pour voir les glyphes.', gridEmptyRun: 'Aucun glyphe attribué pour l\'instant — voir le message en haut de l\'étape 2.',
       s7: '6. Famille de styles', famItalic: 'Italique pour chaque graisse', kerning: 'Crénage automatique (AV, To, Ty, LT…)',
       famPreview: 'Aperçu de la famille', famExport: 'Exporter la famille (ZIP : OTF + WOFF)', famNone: 'Cochez au moins une graisse.',
       famBase: 'Graisse détectée de votre tracé : {w} (fût ≈ {p} % de la hauteur des capitales) — elle sert de référence, les autres graisses sont obtenues en décalant réellement les contours.',
@@ -13,7 +14,7 @@
       assignFromImage: 'Assigner depuis l\'image', pickBoxFor: 'Cliquez sur la boîte de l\'image qui représente « {k} ».', fewTraced: 'peu de glyphes viennent de votre image',
       lgOk: 'attribué', lgSus: 'à vérifier', lgNone: 'sans caractère', nextReview: 'Suivant à vérifier ({n})', allReviewed: 'Tout est vérifié ✓', missingLab: 'Non trouvés (clic = attribuer à la boîte choisie) :',
       method: 'Méthode de seuil', methodOtsu: 'Global (Otsu, éclairage corrigé)', methodSauvola: 'Adaptatif (Sauvola)', working: 'Analyse en cours…', resized: 'Image réduite de {a} à {b} px pour l\'analyse.',
-      w_notFound: 'Planche introuvable : les 4 marques noires doivent être visibles, feuille en portrait. Passage en mode texte libre impossible en mode « Planche ».',
+      w_notFound: 'Planche introuvable : les 4 marques noires doivent être visibles, feuille en portrait. L\'image est donc lue comme un texte libre (alphabet dans l\'ordre ci-dessus).',
       w_notFoundAuto: 'Aucune planche détectée : l\'image est lue comme du texte libre.', w_fewCells: 'Seules {n} cases sur {total} contiennent une lettre lisible.',
       w_removed: '{n} éléments parasites ignorés (bords, traits de cadre, poussières).', w_countMismatch: '{found} formes trouvées pour {expected} caractères attendus : rien n\'est attribué au hasard. {extra} forme(s) en trop laissée(s) sans caractère (boîtes rouges « ? »), caractères non trouvés : {missing}. Cliquez sur une boîte et tapez le bon caractère.',
       w_fewShapes: 'Seulement {n} forme(s) dans l\'image pour {expected} caractères : rien n\'est attribué automatiquement. Cliquez sur chaque boîte rouge et tapez son caractère. Les autres glyphes seront générés (gris) — une police ne se devine pas à partir d\'une ou deux lettres.',
@@ -38,6 +39,7 @@
       kabNote: '', fileHelp: 'Installer : Mac → double-clic puis « Installer » (Livre des polices). Windows → clic droit > Installer.'
     },
     en: {
+      noneAssigned: '{n} shape(s) found for {expected} expected characters, but none could be assigned. Check the mode (Template / Free text), the threshold or “light ink on dark”, and the alphabet order — or assign in order and fix by clicking the boxes.', assignInOrder: 'Assign in order', gridEmpty: 'Drop an image to see the glyphs.', gridEmptyRun: 'No glyph assigned yet — see the message at the top of step 2.',
       s7: '6. Style family', famItalic: 'Italic for each weight', kerning: 'Automatic kerning (AV, To, Ty, LT…)',
       famPreview: 'Preview the family', famExport: 'Export the family (ZIP: OTF + WOFF)', famNone: 'Tick at least one weight.',
       famBase: 'Detected weight of your tracing: {w} (stem ≈ {p} % of cap height) — used as reference; other weights are made by really offsetting the outlines.',
@@ -47,7 +49,7 @@
       assignFromImage: 'Assign from image', pickBoxFor: 'Click the box in the image that shows “{k}”.', fewTraced: 'few glyphs come from your image',
       lgOk: 'assigned', lgSus: 'to check', lgNone: 'unassigned', nextReview: 'Next to check ({n})', allReviewed: 'All checked ✓', missingLab: 'Not found (click = assign to selected box):',
       method: 'Threshold method', methodOtsu: 'Global (Otsu, lighting corrected)', methodSauvola: 'Adaptive (Sauvola)', working: 'Analysing…', resized: 'Image reduced from {a} to {b} px for analysis.',
-      w_notFound: 'Template not found: the 4 black marks must be visible, sheet in portrait.', w_notFoundAuto: 'No template detected: the image is read as free text.', w_fewCells: 'Only {n} of {total} boxes contain a readable letter.',
+      w_notFound: 'Template not found: the 4 black marks must be visible, sheet in portrait. The image is read as free text instead.', w_notFoundAuto: 'No template detected: the image is read as free text.', w_fewCells: 'Only {n} of {total} boxes contain a readable letter.',
       w_removed: '{n} stray elements ignored (edges, frame lines, specks).', w_countMismatch: '{found} shapes found for {expected} expected characters: nothing is assigned blindly. {extra} extra shape(s) left unassigned (red “?” boxes), characters not found: {missing}. Click a box and type the right character.',
       w_fewShapes: 'Only {n} shape(s) in the image for {expected} characters: nothing is assigned automatically. Click each red box and type its character. Other glyphs will be generated (grey) — a font cannot be guessed from one or two letters.',
       w_suspect: '{n} implausible assignment(s) (orange boxes: unusual size or position for that character). Please check.',
@@ -71,6 +73,7 @@
       kabNote: '', fileHelp: 'Install: Mac → double-click then “Install” (Font Book). Windows → right-click > Install.'
     },
     kab: { // Taqbaylit — tasuqqilt s wazal n tazwart, ilaq ad tettwasenqed
+      noneAssigned: '{n} n talɣiwin i {expected} n isekkilen, maca ulac ayen yettwasegzan.', assignInOrder: 'Segzi s umizzwer', gridEmpty: 'Sers tugna akken ad twaliḍ isekkilen.', gridEmptyRun: 'Ulac asekkil yettwasegzan.',
       s7: '6. Tawacult n tɣaniwin', famItalic: 'Aknan i yal tazurant', kerning: 'Aqerreb awurman (AV, To, Ty, LT…)',
       famPreview: 'Taskant n twacult', famExport: 'Sifeḍ tawacult (ZIP : OTF + WOFF)', famNone: 'Fren ma drus yiwet n tzurant.',
       famBase: 'Tazurant n usuneɣ-ik : {w} (≈ {p} %) — d nettat i d tamudemt.',
@@ -80,7 +83,7 @@
       assignFromImage: 'Segzi seg tugna', pickBoxFor: 'Sit ɣef tenkult i d-yeskanen « {k} ».', fewTraced: 'drus n isekkilen i d-yekkan seg tugna-k',
       lgOk: 'yettwasegzi', lgSus: 'ad yettwasenqed', lgNone: 'war asekkil', nextReview: 'Wayed ara tesneqdeḍ ({n})', allReviewed: 'Kullec yettwasenqed ✓', missingLab: 'Ur ttwafen ara :',
       method: 'Tarrayt n umnar', methodOtsu: 'Amatu (Otsu)', methodSauvola: 'Amsezwer (Sauvola)', working: 'Tasleḍt tetteddu…', resized: 'Tugna tettwasemẓi seg {a} ɣer {b} px.',
-      w_notFound: 'Ur tettwaf ara tewriqt : 4 n tecraḍ tiberkanin ilaq ad banent.', w_notFoundAuto: 'Ulac tawriqt : tugna tettwaɣer am uḍris ilelli.', w_fewCells: '{n} kan seg {total} n tenkulin i yesɛan asekkil.',
+      w_notFound: 'Ur tettwaf ara tewriqt : 4 n tecraḍ tiberkanin ilaq ad banent. Tugna tettwaɣer am uḍris ilelli.', w_notFoundAuto: 'Ulac tawriqt : tugna tettwaɣer am uḍris ilelli.', w_fewCells: '{n} kan seg {total} n tenkulin i yesɛan asekkil.',
       w_removed: '{n} n yiferdisen ur nelli ara d isekkilen ttwazeglen.', w_countMismatch: '{found} n talɣiwin ttwafent i {expected} n isekkilen. {extra} ur nesɛi asekkil (« ? »), ixuṣ : {missing}. Sit ɣef tenkult, aru asekkil.',
       w_fewShapes: '{n} kan n talɣiwin i {expected} n isekkilen : sit ɣef yal tanekult tazeggaɣt, aru asekkil-is.',
       w_suspect: '{n} n iseɣtiyen ur nettban ara d imeɣta (tinkulin tiẓiwlanin). Senqed-iten.',

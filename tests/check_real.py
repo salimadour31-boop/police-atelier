@@ -75,5 +75,5 @@ for s in summary:
     for ch, (v, src) in (s.get('derived') or {}).items():
         if not (src or '').startswith('derived') or v < 0.4: fail.append(f"{s['name']}: {ch} mal dérivé ({src}, IoU {v})")
 for r in few:  # image d'une seule lettre : rien d'attribué automatiquement, message clair
-    if r.get('unassigned') != 1 or not any('fewShapes' in a or 'Seulement' in a for a in r.get('alerts') or []) or any('error' in a for a in r.get('alerts') or []): fail.append(f"{r['name']}: {r.get('unassigned')} {r.get('alerts')}")
+    if r.get('unassigned') != 1 or not any('fewShapes' in a or 'Seulement' in a for a in r.get('alerts') or []) or any('error' in a and 'banner' not in a for a in r.get('alerts') or []) or not any('banner' in a for a in r.get('alerts') or []): fail.append(f"{r['name']}: {r.get('unassigned')} {r.get('alerts')}")
 print('\n'.join(fail) if fail else 'RÉGRESSIONS RÉALISTES : OK'); sys.exit(1 if fail else 0)

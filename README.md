@@ -75,6 +75,7 @@ npm run e2e       # Chrome sans tête (bureau 1440 px + mobile 390 px) + validat
 npm run real      # entrées réalistes : photo 12 Mpx de planche (perspective, flou, ombre, bruit, JPEG),
                   # alphabet manuscrit à espacement irrégulier, serif gras, négatif, planche arabe
 npm run browsers  # Chrome, Firefox et WebKit (≈ Safari), bureau + mobile
+npm run broad     # 58 captures variées (9 polices, fond sombre/couleur, 1 à 3 lignes, espacées, photos) × modes Planche/Auto/Texte libre : > 90 % attribués
 npm run family    # famille dans Chrome (bureau + mobile) + validation fontTools/OTS de chaque style + cascade hb-view
 pip install fonttools opentype-sanitizer uharfbuzz pillow numpy
 ```

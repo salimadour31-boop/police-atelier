@@ -68,6 +68,22 @@
   function showAlerts(list) {
     state.alerts = list; const box = $('alerts'); box.innerHTML = '';
     for (const w of list) { const d = document.createElement('div'); d.className = 'alert ' + w.level; d.textContent = fmt(tr(w.code === 'resized' ? 'resized' : 'w_' + w.code), w); box.append(d); }
+    // rien d'attribué alors que des formes existent : bandeau explicite + attribution dans l'ordre en un clic
+    const ex = state.run && state.run.extract;
+    if (ex && ex.items.length && !ex.items.some(i => i.key)) {
+      const d = document.createElement('div'); d.className = 'alert error banner';
+      d.append(fmt(tr('noneAssigned'), { n: ex.items.length, expected: [...($('alphabet').value || '')].length }));
+      const bt = document.createElement('button'); bt.className = 'primary'; bt.id = 'assignInOrder'; bt.textContent = tr('assignInOrder');
+      bt.onclick = assignInOrder; d.append(document.createElement('br'), bt); box.prepend(d);
+    }
+  }
+  /** Attribue les caractères de l'ordre attendu aux formes, dans l'ordre de lecture */
+  function assignInOrder() {
+    const ex = state.run.extract, chars = PA.splitAlphabet ? PA.splitAlphabet($('alphabet').value) : [...$('alphabet').value.replace(/\s+/g, '')];
+    ex.items.forEach((it, i) => { it.key = chars[i] || null; it.suspect = true; });
+    if (ex.kind === 'free') PA.assignBaselines(ex.items);
+    state.run.glyphs = ex.items.filter(t => t.key).map(t => Object.assign(PA.vectorize(ex.bin, t), { suspect: true }));
+    showAlerts((state.alerts || []).filter(a => a.code !== 'noGlyph')); drawViews && drawViews(); rebuild();
   }
   let busy = false;
   async function processImage() {
@@ -254,7 +270,8 @@
     keys.sort((a, b) => (order.indexOf(a) + 1 || 999) - (order.indexOf(b) + 1 || 999));
     // cases attendues mais absentes : affichées explicitement « manquant »
     const hasAr = keys.some(PA.isArabicKey), expectedKeys = [...PA.LATIN_SHEET, ...(hasAr ? PA.ARABIC_SHEET : [])];
-    const all = [...keys, ...expectedKeys.filter(k => !state.G[k])];
+    const all = keys.length ? [...keys, ...expectedKeys.filter(k => !state.G[k])] : [];
+    if (!keys.length) { const e = document.createElement('p'); e.className = 'small emptyGrid'; e.textContent = tr(state.run ? 'gridEmptyRun' : 'gridEmpty'); grid.append(e); }
     all.sort((a, b) => (order.indexOf(a) + 1 || 999) - (order.indexOf(b) + 1 || 999));
     for (const k of all) {
       const g = state.G[k], d = document.createElement('div');

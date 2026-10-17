@@ -9,7 +9,8 @@
     "e2e": "node tests/e2e.mjs",
     "real": "node tests/render_sheets.mjs && python3 tests/degrade.py && node tests/realistic.mjs && python3 tests/check_real.py",
     "browsers": "node tests/browsers.mjs",
-    "family": "node tests/family_ui.mjs && python3 tests/validate_family.py"
+    "family": "node tests/family_ui.mjs && python3 tests/validate_family.py",
+    "broad": "python3 tests/broad_inputs.py && MODE=free node tests/broad.mjs && MODE=template node tests/broad.mjs && MODE=auto node tests/broad.mjs && node tests/banner.mjs"
   },
   "devDependencies": {
     "opentype.js": "1.3.4",
