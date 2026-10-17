@@ -4,10 +4,12 @@
   const PA = root.PA = root.PA || {};
   const T = {
     fr: {
+      lgOk: 'attribué', lgSus: 'à vérifier', lgNone: 'sans caractère', nextReview: 'Suivant à vérifier ({n})', allReviewed: 'Tout est vérifié ✓', missingLab: 'Non trouvés (clic = attribuer à la boîte choisie) :',
       method: 'Méthode de seuil', methodOtsu: 'Global (Otsu, éclairage corrigé)', methodSauvola: 'Adaptatif (Sauvola)', working: 'Analyse en cours…', resized: 'Image réduite de {a} à {b} px pour l\'analyse.',
       w_notFound: 'Planche introuvable : les 4 marques noires doivent être visibles, feuille en portrait. Passage en mode texte libre impossible en mode « Planche ».',
       w_notFoundAuto: 'Aucune planche détectée : l\'image est lue comme du texte libre.', w_fewCells: 'Seules {n} cases sur {total} contiennent une lettre lisible.',
-      w_removed: '{n} éléments parasites ignorés (bords, traits de cadre, poussières).', w_countMismatch: '{found} formes trouvées pour {expected} caractères attendus : vérifiez les attributions (cliquez sur les boîtes).',
+      w_removed: '{n} éléments parasites ignorés (bords, traits de cadre, poussières).', w_countMismatch: '{found} formes trouvées pour {expected} caractères attendus : rien n\'est attribué au hasard. {extra} forme(s) en trop laissée(s) sans caractère (boîtes rouges « ? »), caractères non trouvés : {missing}. Cliquez sur une boîte et tapez le bon caractère.',
+      w_suspect: '{n} attribution(s) peu plausible(s) (boîtes orange : taille ou position inhabituelle pour ce caractère). Vérifiez-les.',
       w_tplInFree: 'Planche modèle reconnue : elle est lue case par case (plus fiable que le texte libre).',
       w_giant: 'Glyphe « {key} » rejeté (taille aberrante).', w_noGlyph: 'Aucune lettre exploitable : augmentez le contraste ou changez de méthode de seuil.', w_crash: 'Erreur inattendue : {msg}', w_load: 'Impossible de lire cette image : {msg}',
       tagline: "Fabrique de police à partir d'une image — 100 % local, libre et gratuit",
@@ -16,7 +18,7 @@
       alphabet: 'Ordre des caractères (texte libre)', tplLatin: 'Planche latine', tplArabic: 'Planche arabe', tplHint: 'Imprimez une planche, remplissez-la au feutre noir, photographiez-la bien à plat et à la lumière.',
       levels: 'Niveaux (noir / blanc)', thresh: 'Seuil', auto: 'auto', despeckle: 'Anti-poussière (px²)', deskew: 'Redresser l\'inclinaison', invert: 'Encre claire sur fond sombre',
       persp: 'Perspective : cliquer 4 coins', perspReset: 'Annuler la perspective', apply: 'Relancer l\'analyse', addSheet: 'Ajouter cette image à la police',
-      assignHint: 'Cliquez sur une boîte pour corriger le caractère attribué.', assign: 'Caractère', ignore: 'Ignorer', ok: 'Appliquer',
+      assignHint: 'Chaque boîte porte son caractère. Cliquez sur une boîte, tapez le bon caractère puis Entrée (on passe à la suivante à vérifier).', assign: 'Caractère', ignore: 'Ignorer', ok: 'Appliquer',
       weight: 'Graisse (épaisseur de trait)', contrast: 'Contraste', slant: 'Inclinaison', xratio: 'Hauteur d\'x / capitales', serif: 'Empattements', yes: 'oui', no: 'non', units: 'unités',
       metrics: 'Métriques', traced: 'tracé', derived: 'dérivé', generated: 'généré', missing: 'manquant',
       legend: 'Tracé = issu de votre image · Dérivé = construit à partir de vos glyphes (miroir, échelle, accent) · Généré = squelette automatique, basique',
@@ -28,9 +30,11 @@
       kabNote: '', fileHelp: 'Installer : Mac → double-clic puis « Installer » (Livre des polices). Windows → clic droit > Installer.'
     },
     en: {
+      lgOk: 'assigned', lgSus: 'to check', lgNone: 'unassigned', nextReview: 'Next to check ({n})', allReviewed: 'All checked ✓', missingLab: 'Not found (click = assign to selected box):',
       method: 'Threshold method', methodOtsu: 'Global (Otsu, lighting corrected)', methodSauvola: 'Adaptive (Sauvola)', working: 'Analysing…', resized: 'Image reduced from {a} to {b} px for analysis.',
       w_notFound: 'Template not found: the 4 black marks must be visible, sheet in portrait.', w_notFoundAuto: 'No template detected: the image is read as free text.', w_fewCells: 'Only {n} of {total} boxes contain a readable letter.',
-      w_removed: '{n} stray elements ignored (edges, frame lines, specks).', w_countMismatch: '{found} shapes found for {expected} expected characters: check the assignments (click the boxes).',
+      w_removed: '{n} stray elements ignored (edges, frame lines, specks).', w_countMismatch: '{found} shapes found for {expected} expected characters: nothing is assigned blindly. {extra} extra shape(s) left unassigned (red “?” boxes), characters not found: {missing}. Click a box and type the right character.',
+      w_suspect: '{n} implausible assignment(s) (orange boxes: unusual size or position for that character). Please check.',
       w_tplInFree: 'Template sheet recognised: it is read box by box (more reliable than free text).',
       w_giant: 'Glyph “{key}” rejected (abnormal size).', w_noGlyph: 'No usable letter: raise the contrast or change the threshold method.', w_crash: 'Unexpected error: {msg}', w_load: 'Cannot read this image: {msg}',
       tagline: 'Turn an image into a font — 100% local, free and open source',
@@ -39,7 +43,7 @@
       alphabet: 'Character order (free text)', tplLatin: 'Latin sheet', tplArabic: 'Arabic sheet', tplHint: 'Print a sheet, fill it with a black marker, photograph it flat in good light.',
       levels: 'Levels (black / white)', thresh: 'Threshold', auto: 'auto', despeckle: 'Despeckle (px²)', deskew: 'Fix skew', invert: 'Light ink on dark background',
       persp: 'Perspective: click 4 corners', perspReset: 'Undo perspective', apply: 'Re-run analysis', addSheet: 'Add this image to the font',
-      assignHint: 'Click a box to fix its assigned character.', assign: 'Character', ignore: 'Ignore', ok: 'Apply',
+      assignHint: 'Each box shows its character. Click a box, type the right character and press Enter (jumps to the next one to check).', assign: 'Character', ignore: 'Ignore', ok: 'Apply',
       weight: 'Weight (stroke thickness)', contrast: 'Contrast', slant: 'Slant', xratio: 'x-height / cap height', serif: 'Serifs', yes: 'yes', no: 'no', units: 'units',
       metrics: 'Metrics', traced: 'traced', derived: 'derived', generated: 'generated', missing: 'missing',
       legend: 'Traced = from your image · Derived = built from your glyphs (mirror, scale, accent) · Generated = automatic skeleton, basic',
@@ -51,9 +55,11 @@
       kabNote: '', fileHelp: 'Install: Mac → double-click then “Install” (Font Book). Windows → right-click > Install.'
     },
     kab: { // Taqbaylit — tasuqqilt s wazal n tazwart, ilaq ad tettwasenqed
+      lgOk: 'yettwasegzi', lgSus: 'ad yettwasenqed', lgNone: 'war asekkil', nextReview: 'Wayed ara tesneqdeḍ ({n})', allReviewed: 'Kullec yettwasenqed ✓', missingLab: 'Ur ttwafen ara :',
       method: 'Tarrayt n umnar', methodOtsu: 'Amatu (Otsu)', methodSauvola: 'Amsezwer (Sauvola)', working: 'Tasleḍt tetteddu…', resized: 'Tugna tettwasemẓi seg {a} ɣer {b} px.',
       w_notFound: 'Ur tettwaf ara tewriqt : 4 n tecraḍ tiberkanin ilaq ad banent.', w_notFoundAuto: 'Ulac tawriqt : tugna tettwaɣer am uḍris ilelli.', w_fewCells: '{n} kan seg {total} n tenkulin i yesɛan asekkil.',
-      w_removed: '{n} n yiferdisen ur nelli ara d isekkilen ttwazeglen.', w_countMismatch: '{found} n talɣiwin ttwafent i {expected} n isekkilen : senqed iseɣtiyen.',
+      w_removed: '{n} n yiferdisen ur nelli ara d isekkilen ttwazeglen.', w_countMismatch: '{found} n talɣiwin ttwafent i {expected} n isekkilen. {extra} ur nesɛi asekkil (« ? »), ixuṣ : {missing}. Sit ɣef tenkult, aru asekkil.',
+      w_suspect: '{n} n iseɣtiyen ur nettban ara d imeɣta (tinkulin tiẓiwlanin). Senqed-iten.',
       w_tplInFree: 'Tawriqt tamudemt tettwassen : tettwaɣer tanekult s tanekult.',
       w_giant: 'Asekkil « {key} » yettwagi (teɣzi ur nelli d tagnit).', w_noGlyph: 'Ulac asekkil : sali anemgal.', w_crash: 'Tuccḍa : {msg}', w_load: 'Ur tettwaɣer ara tugna : {msg}',
       tagline: 'Ssuffeɣ tasefsit seg tugna — s wudem adigan, tilelli, baṭel',

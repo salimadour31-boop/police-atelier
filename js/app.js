@@ -113,13 +113,45 @@
     if (state.pick) { ctx.fillStyle = '#ffb347'; state.pick.forEach(([x, y]) => { ctx.beginPath(); ctx.arc(x, y, 10, 0, 7); ctx.fill(); }); }
     if (!state.run) return;
     const ex = state.run.extract, b = grayToCanvas($('binCanvas'), ex.bin, true);
-    b.lineWidth = Math.max(1.5, ex.bin.w / 800); b.font = `${Math.max(12, ex.bin.w / 70)}px system-ui`;
+    const fs = Math.max(14, ex.bin.w / 60);
+    b.lineWidth = Math.max(2, ex.bin.w / 700); b.font = `bold ${fs}px system-ui`; b.textBaseline = 'bottom';
     ex.items.forEach((it, i) => {
-      const c = it.comp, gen = it.key ? '#5ad1c4' : '#ff6b6b';
-      b.strokeStyle = state.pickItem === i ? '#ffb347' : gen; b.strokeRect(c.x0 - 2, c.y0 - 2, c.x1 - c.x0 + 4, c.y1 - c.y0 + 4);
-      b.fillStyle = gen; b.fillText(it.key ? PA.labelOf(it.key) : '?', c.x0, c.y0 - 4);
+      // vert = attribué, orange = peu plausible, rouge = sans caractère
+      const c = it.comp, col = !it.key ? '#ff5a5a' : it.suspect ? '#ffa53a' : '#2fb8a8';
+      if (!it.key) { b.fillStyle = '#ff5a5a33'; b.fillRect(c.x0 - 2, c.y0 - 2, c.x1 - c.x0 + 4, c.y1 - c.y0 + 4); }
+      b.strokeStyle = state.pickItem === i ? '#3b82f6' : col; b.lineWidth = state.pickItem === i ? Math.max(4, ex.bin.w / 400) : Math.max(2, ex.bin.w / 700);
+      b.strokeRect(c.x0 - 2, c.y0 - 2, c.x1 - c.x0 + 4, c.y1 - c.y0 + 4);
+      // étiquette sur fond plein, lisible sur l'image
+      const lab = it.key ? PA.labelOf(it.key) : '?', tw = b.measureText(lab).width + 8;
+      b.fillStyle = col; b.fillRect(c.x0 - 2, c.y0 - 4 - fs, tw, fs + 2); b.fillStyle = '#0d0f13'; b.fillText(lab, c.x0 + 2, c.y0 - 3);
     });
+    renderReview();
   }
+  /** Barre de vérification : prochaine boîte douteuse + caractères non trouvés */
+  function needsReview() { return state.run ? state.run.extract.items.map((it, i) => [it, i]).filter(([it]) => !it.key || it.suspect).map(([, i]) => i) : []; }
+  function renderReview() {
+    const ex = state.run && state.run.extract; $('review').hidden = !ex || ex.kind !== 'free';
+    if (!ex) return;
+    const n = needsReview().length; $('nextReview').textContent = n ? fmt(tr('nextReview'), { n }) : tr('allReviewed'); $('nextReview').disabled = !n;
+    const used = new Set(ex.items.map(it => it.key).filter(Boolean));
+    const miss = Array.from($('alphabet').value.replace(/\s+/g, '')).filter(ch => !used.has(ch));
+    const chips = $('missingChips'); chips.innerHTML = '';
+    if (miss.length) { const l = document.createElement('span'); l.className = 'lab'; l.textContent = tr('missingLab'); chips.append(l); }
+    for (const ch of miss) { const bt = document.createElement('button'); bt.textContent = ch; bt.onclick = () => { if (state.pickItem != null) reassign(ch); else openBox(needsReview()[0], ch); }; chips.append(bt); }
+  }
+  $('nextReview').onclick = () => { const l = needsReview(); if (l.length) openBox(l[0]); };
+  /** Éditeur flottant posé sur la boîte : on tape le caractère, Entrée = valider et passer à la suivante */
+  function openBox(i, preset) {
+    if (i == null || !state.run) return; const it = state.run.extract.items[i]; if (!it) return;
+    state.pickItem = i; drawViews();
+    const cv = $('binCanvas'), r = cv.getBoundingClientRect(), vr = $('binView').getBoundingClientRect(), k = r.width / cv.width;
+    const ed = $('boxEdit'); ed.hidden = false;
+    let left = r.left - vr.left + it.comp.x0 * k, top = r.top - vr.top + (it.comp.y1 + 6) * k;
+    left = Math.max(0, Math.min(left, vr.width - 170)); if (top > vr.height - 44) top = r.top - vr.top + it.comp.y0 * k - 46;
+    ed.style.left = left + 'px'; ed.style.top = Math.max(0, top) + 'px';
+    $('boxInput').value = preset ?? (it.key || ''); $('boxInput').focus(); $('boxInput').select();
+  }
+  function closeBox() { $('boxEdit').hidden = true; state.pickItem = null; drawViews(); }
   const canvasPoint = (cv, e) => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) * cv.width / r.width, (e.clientY - r.top) * cv.height / r.height]; };
 
   // perspective : 4 clics (haut-gauche, haut-droit, bas-droit, bas-gauche)
@@ -136,19 +168,29 @@
   // attribution manuelle
   $('binCanvas').addEventListener('click', e => {
     if (!state.run) return; const [x, y] = canvasPoint($('binCanvas'), e);
-    const i = state.run.extract.items.findIndex(it => x >= it.comp.x0 - 3 && x <= it.comp.x1 + 3 && y >= it.comp.y0 - 3 && y <= it.comp.y1 + 3);
-    if (i < 0) return; state.pickItem = i; $('assign').hidden = false; $('assignInput').value = state.run.extract.items[i].key || ''; $('assignInput').focus(); drawViews();
+    const items = state.run.extract.items;
+    // la plus petite boîte qui contient le clic (les signes fusionnés agrandissent les boîtes)
+    let best = -1, ba = Infinity;
+    items.forEach((it, i) => { const c = it.comp; if (x >= c.x0 - 4 && x <= c.x1 + 4 && y >= c.y0 - 4 && y <= c.y1 + 4) { const a = (c.x1 - c.x0) * (c.y1 - c.y0); if (a < ba) { ba = a; best = i; } } });
+    if (best >= 0) openBox(best); else closeBox();
   });
   function reassign(val) {
-    const ex = state.run.extract, it = ex.items[state.pickItem]; if (!it) return;
-    it.key = val || null; $('assign').hidden = true; state.pickItem = null;
+    const ex = state.run.extract, i = state.pickItem, it = ex.items[i]; if (!it) return;
+    // un même caractère ne peut désigner qu'une boîte : l'ancienne perd son attribution
+    if (val) ex.items.forEach((o, j) => { if (j !== i && o.key === val) { o.key = null; o.suspect = true; } });
+    it.key = val || null; it.suspect = false; it.manual = true;
     if (ex.kind === 'free') PA.assignBaselines(ex.items);
-    state.run.glyphs = ex.items.filter(t => t.key).map(t => PA.vectorize(ex.bin, t));
-    drawViews(); rebuild();
+    state.run.glyphs = ex.items.filter(t => t.key).map(t => Object.assign(PA.vectorize(ex.bin, t), { suspect: !!t.suspect }));
+    const next = needsReview().find(j => j > i) ?? needsReview()[0];
+    rebuild();
+    if (next != null) openBox(next); else closeBox();
   }
-  $('assignOk').onclick = () => reassign($('assignInput').value.trim());
-  $('assignInput').addEventListener('keydown', e => { if (e.key === 'Enter') reassign($('assignInput').value.trim()); });
-  $('assignIgnore').onclick = () => reassign(null);
+  $('boxOk').onclick = () => reassign($('boxInput').value.trim());
+  $('boxNone').onclick = () => reassign(null);
+  $('boxInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); reassign($('boxInput').value.trim()); }
+    else if (e.key === 'Escape') closeBox();
+  });
 
   // ---------- construction ----------
   function tracedSet() { const T = Object.assign({}, state.committed); if (state.run) for (const g of state.run.glyphs) T[g.key] = g; return T; }
@@ -202,7 +244,7 @@
     keys.sort((a, b) => (order.indexOf(a) + 1 || 999) - (order.indexOf(b) + 1 || 999));
     for (const k of keys) {
       const g = state.G[k]; n[g.source]++;
-      const d = document.createElement('div'); d.className = 'cell ' + g.source + (state.selected === k ? ' sel' : ''); d.title = `${k} — ${tr(g.source)}${g.from ? ' (' + g.from + ')' : ''}`;
+      const d = document.createElement('div'); d.className = 'cell ' + g.source + (g.suspect ? ' suspect' : '') + (state.selected === k ? ' sel' : ''); d.title = `${k} — ${tr(g.source)}${g.from ? ' (' + g.from + ')' : ''}`;
       const cv = document.createElement('canvas'); cv.width = 72; cv.height = 72; drawGlyph(cv, g, false);
       d.append(cv); const lab = document.createElement('div'); lab.className = 'k'; lab.textContent = PA.labelOf(k) + (g.source !== 'traced' ? ' •' : ''); d.append(lab);
       d.onclick = () => { state.selected = k; renderGrid(); renderEditor(); };
