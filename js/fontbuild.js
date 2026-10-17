@@ -29,7 +29,13 @@
   function buildFont(G, metrics, settings = {}, analysis) {
     const ot = root.opentype || (typeof require !== 'undefined' ? require('opentype.js') : null);
     const t = (analysis && analysis.weight) || 80;
-    const baseSB = Math.round((30 + 0.5 * t) * (settings.spacing ?? 1));
+    // approches proportionnelles à l'épaisseur du fût, réduites côté rond (o, c, e…)
+    const baseSB = Math.round((20 + 0.6 * t) * (settings.spacing ?? 1));
+    const ROUND_L = /^[CGOQcdeoqæœ0369@ɛƐ]$/, ROUND_R = /^[BDOPQbopæœ068@9]$/;
+    // côtés « ouverts » (diagonales, bras) : approche réduite davantage
+    const OPEN_L = /^[AJTVWYjvwxy]$/, OPEN_R = /^[FPTVWYfrtvwxy7]$/;
+    const sideF = (key, side) => (side === 'L' ? (OPEN_L.test(key) ? 0.5 : ROUND_L.test(key) ? 0.7 : 1) : (OPEN_R.test(key) ? 0.5 : ROUND_R.test(key) ? 0.7 : 1));
+    const clampC = v => Math.max(-4000, Math.min(4000, Math.round(v)));
     const track = settings.tracking || 0, adj = settings.adjust || {};
     const notdef = new ot.Path(); notdef.moveTo(50, 0); notdef.lineTo(450, 0); notdef.lineTo(450, 700); notdef.lineTo(50, 700); notdef.close();
     notdef.moveTo(100, 50); notdef.lineTo(100, 650); notdef.lineTo(400, 650); notdef.lineTo(400, 50); notdef.close();
@@ -43,19 +49,19 @@
       const g = G[key], a = adj[key] || {}, s = a.scale ?? 1;
       let contours = PA.transform(g.contours, [s, 0, 0, s, 0, a.dy || 0]);
       const b = PA.bboxOf(contours), js = joinSides(key);
-      const lsb = js.includes('L') ? 0 : baseSB + (a.lsb || 0) + track / 2;
-      const rsb = js.includes('R') ? 0 : baseSB + (a.rsb || 0) + track / 2;
+      const lsb = js.includes('L') ? 0 : Math.round(baseSB * sideF(key, 'L')) + (a.lsb || 0) + track / 2;
+      const rsb = js.includes('R') ? 0 : Math.round(baseSB * sideF(key, 'R')) + (a.rsb || 0) + track / 2;
       contours = PA.translate(contours, lsb - b.xMin, 0);
       const path = new ot.Path();
       for (const c of contours) {
         if (!c.length) continue;
-        path.moveTo(Math.round(c[0][0]), Math.round(c[0][1]));
-        for (const q of c) path.curveTo(Math.round(q[2]), Math.round(q[3]), Math.round(q[4]), Math.round(q[5]), Math.round(q[6]), Math.round(q[7]));
+        path.moveTo(clampC(c[0][0]), clampC(c[0][1]));
+        for (const q of c) path.curveTo(clampC(q[2]), clampC(q[3]), clampC(q[4]), clampC(q[5]), clampC(q[6]), clampC(q[7]));
         path.close();
       }
-      yMax = Math.max(yMax, b.yMax); yMin = Math.min(yMin, b.yMin);
+      yMax = Math.max(yMax, Math.min(3000, b.yMax)); yMin = Math.min(yMin, Math.max(-2000, b.yMin));
       const info = glyphInfo(key);
-      const gl = new ot.Glyph({ name: info.name, unicode: info.unicodes[0], advanceWidth: Math.max(0, Math.round(lsb + (b.xMax - b.xMin) + rsb)), path });
+      const gl = new ot.Glyph({ name: info.name, unicode: info.unicodes[0], advanceWidth: Math.max(0, Math.min(4000, Math.round(lsb + (b.xMax - b.xMin) + rsb))), path });
       gl.unicodes = info.unicodes;
       index[key] = glyphs.length; glyphs.push(gl);
     }
