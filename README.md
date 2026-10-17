@@ -30,12 +30,19 @@ Interface en **français**, **anglais** et **taqbaylit** (traduction au mieux, �
 - **Windows** : clic droit sur le fichier `.otf` → **Installer** (ou « Installer pour tous les utilisateurs »).
 - Web : utilisez le `.woff` avec `@font-face`.
 
+## Conseils photo
+
+- Feuille bien à plat, **en portrait**, les 4 marques noires visibles ; pas besoin d'être parfaitement de face : la perspective est corrigée.
+- L'éclairage inégal est compensé (estimation du fond du papier). Si des lettres pâles disparaissent, essayez la méthode **Adaptatif (Sauvola)**.
+- Les messages en haut de la vue indiquent ce qui a été ignoré (bords, traits de cadre, poussières) et si le nombre de formes ne correspond pas à l'alphabet attendu.
+
 ## Limites (honnêtes)
 
 - Les photos d'écriture manuscrite demandent un **bon contraste** (feutre noir, papier blanc, lumière uniforme, pas d'ombre). Le stylo bille fin ou le crayon donnent des résultats médiocres.
 - En texte libre, les lettres doivent être **séparées** : des lettres attachées (cursive, arabe lié) forment un seul bloc. Pour l'arabe, utilisez la planche.
 - Les glyphes **générés** sont des squelettes simples, pas du dessin typographique : remplacez-les en les dessinant.
 - Pas de crénage automatique ni de hinting ; pas d'export TTF (contours quadratiques) pour l'instant — l'OTF s'installe partout.
+- La planche doit être photographiée en portrait (pas de détection de rotation à 90°/180°).
 - La traduction kabyle et la translittération tifinagh sont à relire par des locuteurs.
 
 ## Développement
@@ -59,6 +66,9 @@ Tests :
 npm install
 npm test          # tests unitaires : tracé, segmentation, métriques, analyse, synthèse, export
 npm run e2e       # Chrome sans tête (bureau 1440 px + mobile 390 px) + validation Python
+npm run real      # entrées réalistes : photo 12 Mpx de planche (perspective, flou, ombre, bruit, JPEG),
+                  # alphabet manuscrit à espacement irrégulier, serif gras, négatif, planche arabe
+npm run browsers  # Chrome, Firefox et WebKit (≈ Safari), bureau + mobile
 pip install fonttools opentype-sanitizer uharfbuzz pillow numpy
 ```
 
