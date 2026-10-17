@@ -61,3 +61,10 @@ footer { text-align:center; color:var(--mut); font-size:.8rem; padding:1.5rem; }
 .cell.missing { border:1px dashed #a04b52; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:.2rem; min-height:96px; }
 .cell .miss { color:#ff9a9a; font-size:.68rem; } .mini-btn { font-size:.64rem; padding:.1rem .3rem; }
 .warnTxt { color:#ffd98a; font-weight:600; }
+.famWeights { display:flex; flex-wrap:wrap; gap:.4rem .9rem; margin:.4rem 0 .6rem; }
+.chk { display:inline-flex !important; flex-direction:row !important; align-items:center; gap:.35rem; }
+.chk small { color:var(--mut, #8a8f98); }
+.famList { display:flex; flex-direction:column; gap:.2rem; margin-top:.6rem; }
+.famRow { display:grid; grid-template-columns: 11rem 1fr; align-items:center; gap:.8rem; border-top:1px solid #2a2e36; padding:.25rem 0; }
+.famLab { font-size:.75rem; color:#a9b0bd; } .famTxt { font-size:2.1rem; line-height:1.25; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#f3efe6; }
+@media (max-width: 640px) { .famRow { grid-template-columns: 1fr; gap:.1rem; } .famTxt { font-size:1.6rem; } }

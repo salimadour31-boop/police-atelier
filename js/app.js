@@ -210,14 +210,16 @@
     try { PA.synthesize(G, state.metrics, state.analysis); }
     catch (e) { console.warn(e); showAlerts([...(state.alerts || []), { level: 'error', code: 'crash', msg: e.message }]); }
     state.G = G;
-    Object.assign(state.settings, { family: $('family').value || 'Ma Police', style: $('style').value || 'Regular', version: $('version').value || '1.000', spacing: +$('spacing').value / 100, tracking: +$('tracking').value });
-    try { const { font } = PA.buildFont(G, state.metrics, state.settings, state.analysis); state.font = font; state.otf = font.toArrayBuffer(); }
+    state.famCache = {}; famInvalidate();
+    Object.assign(state.settings, { kerning: $('kerning').checked, family: $('family').value || 'Ma Police', style: $('style').value || 'Regular', version: $('version').value || '1.000', spacing: +$('spacing').value / 100, tracking: +$('tracking').value });
+    try { const built = PA.buildFont(G, state.metrics, state.settings, state.analysis); state.font = built.font; state.built = built; state.otf = PA.fontBinary(built); }
     catch (e) { console.warn(e); showAlerts([...(state.alerts || []), { level: 'error', code: 'crash', msg: e.message }]); return; }
     // validation : relecture de l'OTF
     try { const re = opentype.parse(state.otf); $('valid').textContent = `✓ ${tr('statusBuilt')} : ${re.glyphs.length} glyphes, ${tr('valid')}.`; }
     catch (e) { $('valid').textContent = '⚠ ' + e.message; }
     loadPreviewFont(); renderGrid(); renderStats(); renderEditor();
-    ['dlOTF', 'dlWOFF', 'dlJSON'].forEach(id => $(id).disabled = false);
+    ['dlOTF', 'dlWOFF', 'dlJSON', 'famPreview', 'famExport'].forEach(id => $(id).disabled = false);
+    renderFamBase();
   }
   async function loadPreviewFont() {
     const name = 'PAPreview' + (++state.faceN);
@@ -295,6 +297,63 @@
 
   // ---------- export ----------
   const fileBase = () => (state.settings.family || 'police').replace(/[^\w-]+/g, '') + '-' + (state.settings.style || 'Regular').replace(/[^\w-]+/g, '');
+  // ---------- famille de styles ----------
+  const famDefault = ['Light', 'Regular', 'Bold', 'Black'];
+  PA.WEIGHTS.forEach((w, i) => {
+    const l = document.createElement('label'); l.className = 'chk';
+    l.innerHTML = `<input type="checkbox" value="${i}" ${famDefault.includes(w.name) ? 'checked' : ''}> ${w.name} <small>${w.cls}</small>`;
+    $('famWeights').append(l);
+  });
+  function famInvalidate() { state.famStyles = null; $('famList').innerHTML = ''; $('famStatus').textContent = ''; }
+  function renderFamBase() {
+    if (!state.metrics) return; state.famBase = PA.detectWeight(state.analysis, state.metrics);
+    $('famBase').textContent = fmt(tr('famBase'), { w: state.famBase.name, p: Math.round(state.famBase.ratio * 100) });
+  }
+  const famSel = () => [...$('famWeights').querySelectorAll('input:checked')].map(i => +i.value).flatMap(wi => $('famItalic').checked ? [[wi, false], [wi, true]] : [[wi, false]]);
+  async function generateFamily() {
+    if (state.famStyles) return state.famStyles;
+    const sel = famSel(); if (!sel.length) { $('famStatus').textContent = tr('famNone'); return []; }
+    const out = []; document.body.classList.add('busy-cursor');
+    try {
+      for (const [i, [wi, it]] of sel.entries()) {
+        $('famStatus').textContent = `${tr('working')} ${i + 1}/${sel.length} — ${PA.WEIGHTS[wi].name}${it ? ' Italic' : ''}`;
+        await new Promise(r => setTimeout(r, 15));
+        const st = PA.buildStyle(state.G, state.metrics, state.analysis, state.settings, wi, it, state.famBase, state.famCache);
+        const bin = PA.fontBinary(st.built); opentype.parse(bin); // relecture = validation
+        out.push({ info: st.info, bin, limited: st.limited });
+      }
+    } catch (e) { console.warn(e); showAlerts([...(state.alerts || []), { level: 'error', code: 'crash', msg: e.message }]); return []; }
+    finally { document.body.classList.remove('busy-cursor'); }
+    state.famStyles = out; $('famStatus').textContent = fmt(tr('famDone'), { n: out.length });
+    return out;
+  }
+  async function previewFamily() {
+    const styles = await generateFamily(); $('famList').innerHTML = '';
+    const sample = ($('preview').value.split('\n')[0] || '').slice(0, 60) || 'Hamburgefonstiv 0123';
+    for (const s of styles) {
+      const name = 'PAFam' + (++state.faceN), face = new FontFace(name, s.bin.slice(0));
+      try { await face.load(); document.fonts.add(face); } catch (e) { console.warn(e); continue; }
+      const row = document.createElement('div'); row.className = 'famRow';
+      const lab = document.createElement('span'); lab.className = 'famLab'; lab.title = s.limited.join(' '); lab.textContent = s.info.typoSub + ' · ' + s.info.weightClass + (s.limited.length ? ' · ' + fmt(tr('famLimited'), { n: s.limited.length }) : '');
+      const txt = document.createElement('div'); txt.className = 'famTxt'; txt.style.fontFamily = `"${name}", "Adobe Blank"`; txt.textContent = sample;
+      row.append(lab, txt); $('famList').append(row);
+    }
+  }
+  $('famPreview').onclick = previewFamily;
+  $('famWeights').addEventListener('change', famInvalidate); $('famItalic').addEventListener('change', famInvalidate);
+  $('kerning').addEventListener('change', rebuildSoon);
+  $('famExport').onclick = async () => {
+    const styles = await generateFamily(); if (!styles.length) return;
+    const deflate = async u8 => new Uint8Array(await new Response(new Blob([u8]).stream().pipeThrough(new CompressionStream('deflate'))).arrayBuffer());
+    const files = [];
+    for (const s of styles) {
+      files.push({ name: `OTF/${s.info.ps}.otf`, data: s.bin });
+      try { files.push({ name: `WOFF/${s.info.ps}.woff`, data: await PA.toWOFF(s.bin, deflate) }); } catch (e) { console.warn(e); }
+    }
+    files.push({ name: 'LISEZMOI.txt', data: new TextEncoder().encode(tr('famReadme')) });
+    download(new Blob([PA.makeZip(files)], { type: 'application/zip' }), fileBase().replace(/-[^-]*$/, '') + '-famille.zip');
+  };
+
   $('dlOTF').onclick = () => download(new Blob([state.otf], { type: 'font/otf' }), fileBase() + '.otf');
   $('dlWOFF').onclick = async () => {
     const deflate = async u8 => new Uint8Array(await new Response(new Blob([u8]).stream().pipeThrough(new CompressionStream('deflate'))).arrayBuffer());

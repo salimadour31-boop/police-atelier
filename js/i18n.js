@@ -4,6 +4,12 @@
   const PA = root.PA = root.PA || {};
   const T = {
     fr: {
+      s7: '6. Famille de styles', famItalic: 'Italique pour chaque graisse', kerning: 'Crénage automatique (AV, To, Ty, LT…)',
+      famPreview: 'Aperçu de la famille', famExport: 'Exporter la famille (ZIP : OTF + WOFF)', famNone: 'Cochez au moins une graisse.',
+      famBase: 'Graisse détectée de votre tracé : {w} (fût ≈ {p} % de la hauteur des capitales) — elle sert de référence, les autres graisses sont obtenues en décalant réellement les contours.',
+      famDone: '{n} styles générés et relus (valides).', famLimited: '{n} glyphe(s) au décalage réduit (contreformes gardées ouvertes)',
+      famNote: 'Police variable (axe wght) : non proposée — les graisses sont retracées séparément, leurs points ne sont pas compatibles pour une interpolation fiable. Installez les OTF de la famille : Font Book / Windows les regroupent sous un seul nom.',
+      famReadme: 'Famille générée avec Police Atelier.\nOTF : à installer (Mac : double-clic > Installer dans Livre des polices ; Windows : clic droit > Installer pour tous les utilisateurs).\nWOFF : pour le web (@font-face).\nLes graisses autres que votre tracé sont obtenues par décalage de contour : vérifiez-les avant un usage professionnel.\n',
       assignFromImage: 'Assigner depuis l\'image', pickBoxFor: 'Cliquez sur la boîte de l\'image qui représente « {k} ».', fewTraced: 'peu de glyphes viennent de votre image',
       lgOk: 'attribué', lgSus: 'à vérifier', lgNone: 'sans caractère', nextReview: 'Suivant à vérifier ({n})', allReviewed: 'Tout est vérifié ✓', missingLab: 'Non trouvés (clic = attribuer à la boîte choisie) :',
       method: 'Méthode de seuil', methodOtsu: 'Global (Otsu, éclairage corrigé)', methodSauvola: 'Adaptatif (Sauvola)', working: 'Analyse en cours…', resized: 'Image réduite de {a} à {b} px pour l\'analyse.',
@@ -15,7 +21,7 @@
       w_tplInFree: 'Planche modèle reconnue : elle est lue case par case (plus fiable que le texte libre).',
       w_giant: 'Glyphe « {key} » rejeté (taille aberrante).', w_noGlyph: 'Aucune lettre exploitable : augmentez le contraste ou changez de méthode de seuil.', w_crash: 'Erreur inattendue : {msg}', w_load: 'Impossible de lire cette image : {msg}',
       tagline: "Fabrique de police à partir d'une image — 100 % local, libre et gratuit",
-      s1: '1. Image', s2: '2. Nettoyage & segmentation', s3: 'Analyse de la structure', s4: '4. Glyphes', s5: '5. Aperçu', s6: '6. Export',
+      s1: '1. Image', s2: '2. Nettoyage & segmentation', s3: 'Analyse de la structure', s4: '4. Glyphes', s5: '5. Aperçu', s6: '7. Export',
       drop: 'Déposez une image (PNG, JPG, WebP) ou cliquez pour choisir', mode: 'Mode', modeAuto: 'Automatique', modeTpl: 'Planche modèle', modeFree: 'Texte libre (alphabet dans l\'ordre)',
       alphabet: 'Ordre des caractères (texte libre)', tplLatin: 'Planche latine', tplArabic: 'Planche arabe', tplHint: 'Imprimez une planche, remplissez-la au feutre noir, photographiez-la bien à plat et à la lumière.',
       levels: 'Niveaux (noir / blanc)', thresh: 'Seuil', auto: 'auto', despeckle: 'Anti-poussière (px²)', deskew: 'Redresser l\'inclinaison', invert: 'Encre claire sur fond sombre',
@@ -32,6 +38,12 @@
       kabNote: '', fileHelp: 'Installer : Mac → double-clic puis « Installer » (Livre des polices). Windows → clic droit > Installer.'
     },
     en: {
+      s7: '6. Style family', famItalic: 'Italic for each weight', kerning: 'Automatic kerning (AV, To, Ty, LT…)',
+      famPreview: 'Preview the family', famExport: 'Export the family (ZIP: OTF + WOFF)', famNone: 'Tick at least one weight.',
+      famBase: 'Detected weight of your tracing: {w} (stem ≈ {p} % of cap height) — used as reference; other weights are made by really offsetting the outlines.',
+      famDone: '{n} styles generated and re-read (valid).', famLimited: '{n} glyph(s) with reduced offset (counters kept open)',
+      famNote: 'Variable font (wght axis): not offered — each weight is retraced separately, so the points are not interpolation-compatible. Install the family OTFs: Font Book / Windows group them under one name.',
+      famReadme: 'Family generated with Police Atelier.\nOTF: install (Mac: double-click > Install in Font Book; Windows: right-click > Install).\nWOFF: for the web (@font-face).\nWeights other than your tracing are made by contour offsetting: check them before professional use.\n',
       assignFromImage: 'Assign from image', pickBoxFor: 'Click the box in the image that shows “{k}”.', fewTraced: 'few glyphs come from your image',
       lgOk: 'assigned', lgSus: 'to check', lgNone: 'unassigned', nextReview: 'Next to check ({n})', allReviewed: 'All checked ✓', missingLab: 'Not found (click = assign to selected box):',
       method: 'Threshold method', methodOtsu: 'Global (Otsu, lighting corrected)', methodSauvola: 'Adaptive (Sauvola)', working: 'Analysing…', resized: 'Image reduced from {a} to {b} px for analysis.',
@@ -42,7 +54,7 @@
       w_tplInFree: 'Template sheet recognised: it is read box by box (more reliable than free text).',
       w_giant: 'Glyph “{key}” rejected (abnormal size).', w_noGlyph: 'No usable letter: raise the contrast or change the threshold method.', w_crash: 'Unexpected error: {msg}', w_load: 'Cannot read this image: {msg}',
       tagline: 'Turn an image into a font — 100% local, free and open source',
-      s1: '1. Image', s2: '2. Clean-up & segmentation', s3: 'Structure analysis', s4: '4. Glyphs', s5: '5. Preview', s6: '6. Export',
+      s1: '1. Image', s2: '2. Clean-up & segmentation', s3: 'Structure analysis', s4: '4. Glyphs', s5: '5. Preview', s6: '7. Export',
       drop: 'Drop an image (PNG, JPG, WebP) or click to choose', mode: 'Mode', modeAuto: 'Automatic', modeTpl: 'Template sheet', modeFree: 'Free text (alphabet in order)',
       alphabet: 'Character order (free text)', tplLatin: 'Latin sheet', tplArabic: 'Arabic sheet', tplHint: 'Print a sheet, fill it with a black marker, photograph it flat in good light.',
       levels: 'Levels (black / white)', thresh: 'Threshold', auto: 'auto', despeckle: 'Despeckle (px²)', deskew: 'Fix skew', invert: 'Light ink on dark background',
@@ -59,6 +71,12 @@
       kabNote: '', fileHelp: 'Install: Mac → double-click then “Install” (Font Book). Windows → right-click > Install.'
     },
     kab: { // Taqbaylit — tasuqqilt s wazal n tazwart, ilaq ad tettwasenqed
+      s7: '6. Tawacult n tɣaniwin', famItalic: 'Aknan i yal tazurant', kerning: 'Aqerreb awurman (AV, To, Ty, LT…)',
+      famPreview: 'Taskant n twacult', famExport: 'Sifeḍ tawacult (ZIP : OTF + WOFF)', famNone: 'Fren ma drus yiwet n tzurant.',
+      famBase: 'Tazurant n usuneɣ-ik : {w} (≈ {p} %) — d nettat i d tamudemt.',
+      famDone: '{n} n tɣaniwin ttwaxedmen.', famLimited: '{n} n isekkilen : asenkez yettwasenqes',
+      famNote: 'Tasefsit tamuttyt (wght) : ulac — tizurin ttwasunɣent yal yiwet weḥd-s.',
+      famReadme: 'Tawacult yettwaxedmen s Police Atelier.\n',
       assignFromImage: 'Segzi seg tugna', pickBoxFor: 'Sit ɣef tenkult i d-yeskanen « {k} ».', fewTraced: 'drus n isekkilen i d-yekkan seg tugna-k',
       lgOk: 'yettwasegzi', lgSus: 'ad yettwasenqed', lgNone: 'war asekkil', nextReview: 'Wayed ara tesneqdeḍ ({n})', allReviewed: 'Kullec yettwasenqed ✓', missingLab: 'Ur ttwafen ara :',
       method: 'Tarrayt n umnar', methodOtsu: 'Amatu (Otsu)', methodSauvola: 'Amsezwer (Sauvola)', working: 'Tasleḍt tetteddu…', resized: 'Tugna tettwasemẓi seg {a} ɣer {b} px.',
@@ -69,7 +87,7 @@
       w_tplInFree: 'Tawriqt tamudemt tettwassen : tettwaɣer tanekult s tanekult.',
       w_giant: 'Asekkil « {key} » yettwagi (teɣzi ur nelli d tagnit).', w_noGlyph: 'Ulac asekkil : sali anemgal.', w_crash: 'Tuccḍa : {msg}', w_load: 'Ur tettwaɣer ara tugna : {msg}',
       tagline: 'Ssuffeɣ tasefsit seg tugna — s wudem adigan, tilelli, baṭel',
-      s1: '1. Tugna', s2: '2. Asizdeg d beṭṭu', s3: 'Tasleḍt n teɣessa', s4: '4. Isekkilen', s5: '5. Taskant', s6: '6. Asifeḍ',
+      s1: '1. Tugna', s2: '2. Asizdeg d beṭṭu', s3: 'Tasleḍt n teɣessa', s4: '4. Isekkilen', s5: '5. Taskant', s6: '7. Asifeḍ',
       drop: 'Sers tugna (PNG, JPG, WebP) neɣ sit i ufran', mode: 'Askar', modeAuto: 'S wudem awurman', modeTpl: 'Tawriqt tamudemt', modeFree: 'Aḍris ilelli (agemmay s umyizwer)',
       alphabet: 'Amyizwer n isekkilen', tplLatin: 'Tawriqt talatinit', tplArabic: 'Tawriqt taɛrabt', tplHint: 'Siggez tawriqt, aru s ustilu aberkan, ṭṭef-as tawlaft s tafat.',
       levels: 'Iswiren (aberkan / amellal)', thresh: 'Amnar', auto: 'awurman', despeckle: 'Kkes iɣebbaren', deskew: 'Seɣdel amelmal', invert: 'Asmuk afaw ɣef ugilal aberkan',

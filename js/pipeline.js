@@ -226,7 +226,13 @@
   function inside(p, poly) { let c = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const a = poly[i], b = poly[j]; if ((a[1] > p[1]) !== (b[1] > p[1]) && p[0] < (b[0] - a[0]) * (p[1] - a[1]) / (b[1] - a[1]) + a[0]) c = !c; } return c; }
   function bboxOf(contours) {
     let xMin = Infinity, yMin = Infinity, xMax = -Infinity, yMax = -Infinity;
-    for (const c of contours) for (const s of c) for (let i = 0; i < 8; i += 2) { xMin = Math.min(xMin, s[i]); xMax = Math.max(xMax, s[i]); yMin = Math.min(yMin, s[i + 1]); yMax = Math.max(yMax, s[i + 1]); }
+    // étendue réelle de la courbe (échantillonnée), pas des points de contrôle : une poignée qui déborde
+    // ne doit pas gonfler l'approche
+    for (const c of contours) for (const q of c) for (let k = 0; k <= 10; k++) {
+      const t = k / 10, u = 1 - t, a = u * u * u, b = 3 * u * u * t, cc = 3 * u * t * t, d = t * t * t;
+      const x = a * q[0] + b * q[2] + cc * q[4] + d * q[6], y = a * q[1] + b * q[3] + cc * q[5] + d * q[7];
+      if (x < xMin) xMin = x; if (x > xMax) xMax = x; if (y < yMin) yMin = y; if (y > yMax) yMax = y;
+    }
     if (xMin === Infinity) return { xMin: 0, yMin: 0, xMax: 0, yMax: 0 };
     return { xMin, yMin, xMax, yMax };
   }
