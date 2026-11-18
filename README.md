@@ -35,17 +35,17 @@ Interface en **français**, **anglais** et **taqbaylit** (traduction au mieux, �
 
 ## Conseils photo
 
-- Feuille bien à plat, **en portrait**, les 4 marques noires visibles ; pas besoin d'être parfaitement de face : la perspective est corrigée.
+- Feuille bien à plat, si possible **en portrait**, les 4 marques noires visibles ; pas besoin d'être parfaitement de face : la perspective est corrigée. Une photo tournée (90°, 180°, 270°) est détectée et redressée automatiquement, avec un bandeau d'information.
 - L'éclairage inégal est compensé (estimation du fond du papier). Si des lettres pâles disparaissent, essayez la méthode **Adaptatif (Sauvola)**.
 - Les messages en haut de la vue indiquent ce qui a été ignoré (bords, traits de cadre, poussières) et si le nombre de formes ne correspond pas à l'alphabet attendu.
 
 ## Limites (honnêtes)
 
 - Les photos d'écriture manuscrite demandent un **bon contraste** (feutre noir, papier blanc, lumière uniforme, pas d'ombre). Le stylo bille fin ou le crayon donnent des résultats médiocres.
-- En texte libre, les lettres doivent être **séparées** : des lettres attachées (cursive, arabe lié) forment un seul bloc. Pour l'arabe, utilisez la planche.
+- En texte libre, les liaisons fines entre lettres attachées sont **coupées automatiquement** (aux creux d'encre). Une cursive très fusionnée (traits épais en hauteur sur toute la jonction) peut encore former un seul bloc. Pour l'arabe, utilisez la planche.
 - Les glyphes **générés** sont des squelettes simples, pas du dessin typographique : remplacez-les en les dessinant.
 - Crénage limité à une liste de paires courantes ; pas de hinting ; l'export TTF approxime les courbes cubiques par des quadratiques (écart inférieur à une unité et demie) — pour une fidélité maximale au tracé, préférez l'OTF, qui s'installe partout.
-- La planche doit être photographiée en portrait (pas de détection de rotation à 90°/180°).
+- La planche peut être photographiée en paysage ou retournée : l'orientation est détectée et corrigée automatiquement. Pour la planche latine à 180° (feuille à l'envers), la détection se base sur la ligne de base des cases écrites : au moins **8 cases remplies** sont nécessaires.
 - Les graisses extrêmes (Thin, Black) d'un tracé très fin ou très gras peuvent être limitées pour garder les contreformes ouvertes ; l'italique est un oblique (pas de a/f cursifs).
 - Une image avec une ou deux lettres seulement ne suffit pas : rien n'est deviné, le reste est généré (gris).
 - La traduction kabyle et la translittération tifinagh sont à relire par des locuteurs.
@@ -56,7 +56,7 @@ Pur HTML/CSS/JS, aucune compilation, aucun serveur : ouvrez `index.html` (ou ser
 
 ```
 js/imageproc.js  niveaux, Otsu, anti-poussière, deskew, homographie
-js/segment.js    composantes connexes, fusion des signes, ordre de lecture
+js/segment.js    composantes connexes, fusion des points, séparation des lettres attachées, ordre de lecture
 js/trace.js      marching squares + Bézier cubiques, rastérisation, IoU
 js/analyse.js    graisse, contraste, inclinaison, empattements, métriques
 js/pipeline.js   enchaînement planche / texte libre -> glyphes en unités

@@ -75,6 +75,19 @@
   /** Coordonnées canoniques des centres des marques */
   function markerCenters() { const S = PA.SHEET, m = S.margin + S.marker / 2; return [[m, m], [S.W - m, m], [S.W - m, S.H - m], [m, S.H - m]]; }
 
+  /** Cherche la planche ; si introuvable, réessaie après rotation de 90/180/270°
+   *  (photo prise en paysage). Renvoie {corners, cleaned, rotation} ou null */
+  function detectTemplateRotated(cleaned) {
+    let corners = detectTemplate(cleaned.bin);
+    if (corners) return { corners, cleaned, rotation: 0 };
+    for (const deg of [90, 180, 270]) {
+      const rot = img => deg === 180 ? PA.rotate(img, 180, img === cleaned.bin ? 0 : 255) : PA.rot90(img, deg === 90);
+      const c2 = detectTemplate(rot(cleaned.bin));
+      if (c2) return { corners: c2, cleaned: Object.assign({}, cleaned, { gray: rot(cleaned.gray) }), rotation: deg };
+    }
+    return null;
+  }
+
   // lettres dont le bas repose sur la ligne de base (on peut caler leur ligne de base sur leur propre bas)
   const SNAP = /^[A-IK-PR-Za-fhik-ortuvwxz0-9éèêàùôîëïûœæčɛ!?%#&*+=«».:]/;
   const NOSNAP = /[ḥṛṣṭẓḍçǧɣgjpqyQJ,;()\/@_'"\-ـ]|[جحخعغمنيىئسشصضقل]/;
@@ -83,17 +96,36 @@
   /** Redresse la planche et lit chaque case. */
   function extractTemplate(cleaned, corners, warnings) {
     const S = PA.SHEET, mc = markerCenters();
-    const Hm = PA.homography(mc, corners);
-    const map = (x, y) => { const z = Hm[6] * x + Hm[7] * y + 1; return [(Hm[0] * x + Hm[1] * y + Hm[2]) / z, (Hm[3] * x + Hm[4] * y + Hm[5]) / z]; };
-    const full = [map(0, 0), map(S.W, 0), map(S.W, S.H), map(0, S.H)];
-    let g = PA.warpPerspective(cleaned.gray, full, S.W, S.H, 255);
-    // seuil relatif au papier : les lignes guides grises (≈ 80-90 % du blanc) ne passent pas
-    g = PA.flatten(g, 64, false);
-    const t = Math.min(150, Math.max(70, PA.otsu(g)));
-    const bin = PA.threshold(g, t, false);
-    let ink = 0; for (let y = S.margin; y < S.margin + S.marker; y++) for (let x = S.W / 2 - 28; x < S.W / 2 + 28; x++) ink += bin.data[(y | 0) * S.W + (x | 0)];
-    const kind = ink > S.marker * 56 * 0.5 ? 'arabic' : 'latin';
+    // remise à plat : corners[0] = coin haut-gauche supposé des repères
+    const warp = () => {
+      const Hm = PA.homography(mc, corners);
+      const map = (x, y) => { const z = Hm[6] * x + Hm[7] * y + 1; return [(Hm[0] * x + Hm[1] * y + Hm[2]) / z, (Hm[3] * x + Hm[4] * y + Hm[5]) / z]; };
+      const full = [map(0, 0), map(S.W, 0), map(S.W, S.H), map(0, S.H)];
+      let g = PA.warpPerspective(cleaned.gray, full, S.W, S.H, 255);
+      // seuil relatif au papier : les lignes guides grises (≈ 80-90 % du blanc) ne passent pas
+      g = PA.flatten(g, 64, false);
+      const t = Math.min(150, Math.max(70, PA.otsu(g)));
+      return { g, bin: PA.threshold(g, t, false) };
+    };
+    // encre au centre, sur une bande verticale de la taille d'un repère
+    const midInk = (bin, y0) => { let s = 0; for (let y = y0; y < y0 + S.marker; y++) for (let x = S.W / 2 - 28; x < S.W / 2 + 28; x++) s += bin.data[(y | 0) * S.W + (x | 0)]; return s; };
+    let w = warp();
+    // photo prise à 180° : les 4 repères de coin sont symétriques, mais le repère
+    // d'identification arabe est alors descendu au centre bas (et le haut est vide).
+    if (midInk(w.bin, S.margin) < 200 && midInk(w.bin, S.H - S.margin - S.marker) > S.marker * 28) {
+      corners = [corners[2], corners[3], corners[0], corners[1]];
+      warnings.push({ level: 'info', code: 'rotated', deg: 180 });
+      w = warp();
+    }
+    const kindOf = bin => midInk(bin, S.margin) > S.marker * 56 * 0.5 ? 'arabic' : 'latin';
+    let kind = kindOf(w.bin);
+    if (upsideDownTemplate(w, kind)) {
+      corners = [corners[2], corners[3], corners[0], corners[1]];
+      warnings.push({ level: 'info', code: 'rotated', deg: 180 });
+      w = warp(); kind = kindOf(w.bin);
+    }
     const L = PA.layout(kind), raw = [];
+    const bin = w.bin;
     for (const cell of L.cells) {
       const r = cell.inner, ox = Math.round(r.x) + 3, oy = Math.round(r.y), sw = Math.round(r.w) - 6, sh = Math.round(r.h) - 4;
       const sub = { w: sw, h: sh, data: new Uint8Array(sw * sh) };
@@ -128,7 +160,24 @@
     const scale = capH.length >= 3 ? 700 / PA.median(capH) : alif.length ? 700 / PA.median(alif) : 700 / (L.cells[0].base - L.cells[0].cap);
     items.forEach(it => it.scale = scale);
     if (items.length < L.cells.length * 0.3) warnings.push({ level: 'warn', code: 'fewCells', n: items.length, total: L.cells.length });
-    return { kind, items, bin, gray: g };
+    return { kind, items, bin, gray: w.g };
+  }
+  /** Planche latine lue à l'envers ? Les repères de coin sont symétriques ; mais l'écriture à
+   *  l'endroit repose sur les lignes de base, à l'envers elle « flotte » au-dessus. */
+  function upsideDownTemplate(warped, kind) {
+    if (kind !== 'latin') return false;
+    const S = PA.SHEET, L = PA.layout(kind), bin = warped.bin;
+    let nWrite = 0, nOnBase = 0;
+    for (const cell of L.cells) {
+      const r = cell.inner; let low = -1, n = 0;
+      for (let y = Math.round(r.y); y < Math.round(r.y + r.h); y++) {
+        let act = 0;
+        for (let x = Math.round(r.x); x < Math.round(r.x + r.w); x++) if (bin.data[y * bin.w + x]) act++;
+        if (act >= 3) { low = y; n += act; }
+      }
+      if (n >= 40) { nWrite++; const gap = cell.base - low; if (gap >= -18 && gap <= 18) nOnBase++; }
+    }
+    return nWrite >= 8 && nOnBase < 0.4 * nWrite;
   }
   const touchesBorder = (c, b) => c.x0 <= 0 || c.y0 <= 0 || c.x1 >= b.w - 1 || c.y1 >= b.h - 1;
   function mergeComp(a, b) { a.x0 = Math.min(a.x0, b.x0); a.y0 = Math.min(a.y0, b.y0); a.x1 = Math.max(a.x1, b.x1); a.y1 = Math.max(a.y1, b.y1); a.area += b.area; const p = new Int32Array(a.pixels.length + b.pixels.length); p.set(a.pixels); p.set(b.pixels, a.pixels.length); a.pixels = p; }
@@ -158,6 +207,7 @@
     const f = filterComponents(comps, cleaned.bin, alphabet, { keepSmall: true }); comps = f.kept;
     // 2) fusion des signes avec leur lettre, puis 3) poussières restées isolées
     comps = PA.mergeMarks(comps);
+    comps = PA.splitTouching(comps);
     const f2 = filterComponents(comps, cleaned.bin, alphabet, { keepSmall: false }); comps = PA.readingOrder(f2.kept);
     if (f.removed + f2.removed) warnings.push({ level: 'info', code: 'removed', n: f.removed + f2.removed });
     if (rtl) {
@@ -244,8 +294,19 @@
     let cleaned = clean(gray, opts), ex = null;
     {
       // on cherche toujours la planche : une planche lue « en texte libre » donnerait des glyphes faux
-      const corners = detectTemplate(cleaned.bin);
-      if (corners) { ex = extractTemplate(cleaned, corners, warnings); if (opts.mode === 'free') warnings.push({ level: 'info', code: 'tplInFree' }); }
+      const found = detectTemplateRotated(cleaned);
+      if (found) {
+        if (found.rotation) warnings.push({ level: 'info', code: 'rotated', deg: found.rotation });
+        ex = extractTemplate(found.cleaned, found.corners, warnings); if (opts.mode === 'free') warnings.push({ level: 'info', code: 'tplInFree' });
+        // rotations cumulées (quart de tour à la détection + retournement 180° éventuel) :
+        // un seul bandeau avec l'orientation réelle de la photo
+        const rots = warnings.filter(x => x.code === 'rotated');
+        if (rots.length > 1) {
+          const total = rots.reduce((t, r) => (t + r.deg) % 360, 0);
+          for (let i = warnings.length - 1; i >= 0; i--) if (warnings[i].code === 'rotated') warnings.splice(i, 1);
+          warnings.unshift({ level: 'info', code: 'rotated', deg: total || 360 });
+        }
+      }
       // planche demandée mais introuvable : on lit l'image comme un texte libre au lieu de tout laisser vide
       else if (opts.mode === 'template') warnings.push({ level: 'warn', code: 'notFound' });
     }
@@ -265,6 +326,6 @@
     return { mode: ex.kind, glyphs, extract: ex, cleaned, warnings };
   }
 
-  Object.assign(PA, { clean, deskew, filterComponents, canSnap, detectTemplate, markerCenters, extractTemplate, extractFree, assignBaselines, vectorize, normalizeOrientation, bboxOf, run });
+  Object.assign(PA, { clean, deskew, filterComponents, canSnap, detectTemplate, detectTemplateRotated, markerCenters, extractTemplate, extractFree, assignBaselines, vectorize, normalizeOrientation, bboxOf, run });
   if (typeof module !== 'undefined') module.exports = PA;
 })(typeof self !== 'undefined' ? self : globalThis);
