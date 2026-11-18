@@ -6,11 +6,11 @@
     fr: {
       noneAssigned: '{n} forme(s) trouvée(s) pour {expected} caractères attendus, mais aucune n\'a pu être attribuée. Vérifiez le mode (Planche / Texte libre), le seuil ou « encre claire sur fond sombre », et l\'ordre de l\'alphabet — ou attribuez dans l\'ordre puis corrigez en cliquant sur les boîtes.', assignInOrder: 'Attribuer dans l\'ordre', gridEmpty: 'Déposez une image pour voir les glyphes.', gridEmptyRun: 'Aucun glyphe attribué pour l\'instant — voir le message en haut de l\'étape 2.',
       s7: '6. Famille de styles', famItalic: 'Italique pour chaque graisse', kerning: 'Crénage automatique (AV, To, Ty, LT…)',
-      famPreview: 'Aperçu de la famille', famExport: 'Exporter la famille (ZIP : OTF + WOFF)', famNone: 'Cochez au moins une graisse.',
+      famPreview: 'Aperçu de la famille', famExport: 'Exporter la famille (ZIP : OTF + TTF + WOFF)', famNone: 'Cochez au moins une graisse.',
       famBase: 'Graisse détectée de votre tracé : {w} (fût ≈ {p} % de la hauteur des capitales) — elle sert de référence, les autres graisses sont obtenues en décalant réellement les contours.',
       famDone: '{n} styles générés et relus (valides).', famLimited: '{n} glyphe(s) au décalage réduit (contreformes gardées ouvertes)',
       famNote: 'Police variable (axe wght) : non proposée — les graisses sont retracées séparément, leurs points ne sont pas compatibles pour une interpolation fiable. Installez les OTF de la famille : Font Book / Windows les regroupent sous un seul nom.',
-      famReadme: 'Famille générée avec Police Atelier.\nOTF : à installer (Mac : double-clic > Installer dans Livre des polices ; Windows : clic droit > Installer pour tous les utilisateurs).\nWOFF : pour le web (@font-face).\nLes graisses autres que votre tracé sont obtenues par décalage de contour : vérifiez-les avant un usage professionnel.\n',
+      famReadme: 'Famille générée avec Police Atelier.\nOTF : à installer (Mac : double-clic > Installer dans Livre des polices ; Windows : clic droit > Installer pour tous les utilisateurs).\nTTF : même police en contours TrueType (Android, moteurs plus anciens).\nWOFF : pour le web (@font-face).\nLes graisses autres que votre tracé sont obtenues par décalage de contour : vérifiez-les avant un usage professionnel.\n',
       assignFromImage: 'Assigner depuis l\'image', pickBoxFor: 'Cliquez sur la boîte de l\'image qui représente « {k} ».', fewTraced: 'peu de glyphes viennent de votre image',
       lgOk: 'attribué', lgSus: 'à vérifier', lgNone: 'sans caractère', nextReview: 'Suivant à vérifier ({n})', allReviewed: 'Tout est vérifié ✓', missingLab: 'Non trouvés (clic = attribuer à la boîte choisie) :',
       method: 'Méthode de seuil', methodOtsu: 'Global (Otsu, éclairage corrigé)', methodSauvola: 'Adaptatif (Sauvola)', working: 'Analyse en cours…', resized: 'Image réduite de {a} à {b} px pour l\'analyse.',
@@ -33,7 +33,7 @@
       legend: 'Crème = tracé depuis votre image · Bleu = dérivé de vos glyphes (P→R, n→r, miroir, accent) · Gris pointillé = généré automatiquement (squelette basique) · Rouge pointillé = manquant',
       baseline: 'Décalage ligne de base', scale: 'Échelle', lsb: 'Approche gauche', rsb: 'Approche droite', spacing: 'Espacement global', tracking: 'Interlettrage',
       family: 'Famille', style: 'Style', version: 'Version', previewText: 'Portez ce vieux whisky au juge blond qui fume. Azul fell-awen ! سلام محمد 0123456789',
-      exportOTF: 'Télécharger OTF', exportWOFF: 'Télécharger WOFF', exportJSON: 'Projet JSON', importJSON: 'Ouvrir un projet', reset: 'Tout effacer',
+      exportOTF: 'Télécharger OTF', exportTTF: 'Télécharger TTF', exportWOFF: 'Télécharger WOFF', exportJSON: 'Projet JSON', importJSON: 'Ouvrir un projet', reset: 'Tout effacer',
       noImage: 'Aucune image pour l\'instant. Commencez par déposer une photo ou une planche remplie.', tplFound: 'Planche détectée', freeFound: 'Texte libre', glyphsFound: 'glyphes trouvés',
       statusBuilt: 'Police construite', valid: 'relue avec succès par opentype.js', rtl: 'sens droite→gauche détecté', notFound: 'Planche introuvable : vérifiez que les 4 marques noires sont visibles.',
       kabNote: '', fileHelp: 'Installer : Mac → double-clic puis « Installer » (Livre des polices). Windows → clic droit > Installer.'
@@ -41,11 +41,11 @@
     en: {
       noneAssigned: '{n} shape(s) found for {expected} expected characters, but none could be assigned. Check the mode (Template / Free text), the threshold or “light ink on dark”, and the alphabet order — or assign in order and fix by clicking the boxes.', assignInOrder: 'Assign in order', gridEmpty: 'Drop an image to see the glyphs.', gridEmptyRun: 'No glyph assigned yet — see the message at the top of step 2.',
       s7: '6. Style family', famItalic: 'Italic for each weight', kerning: 'Automatic kerning (AV, To, Ty, LT…)',
-      famPreview: 'Preview the family', famExport: 'Export the family (ZIP: OTF + WOFF)', famNone: 'Tick at least one weight.',
+      famPreview: 'Preview the family', famExport: 'Export the family (ZIP: OTF + TTF + WOFF)', famNone: 'Tick at least one weight.',
       famBase: 'Detected weight of your tracing: {w} (stem ≈ {p} % of cap height) — used as reference; other weights are made by really offsetting the outlines.',
       famDone: '{n} styles generated and re-read (valid).', famLimited: '{n} glyph(s) with reduced offset (counters kept open)',
       famNote: 'Variable font (wght axis): not offered — each weight is retraced separately, so the points are not interpolation-compatible. Install the family OTFs: Font Book / Windows group them under one name.',
-      famReadme: 'Family generated with Police Atelier.\nOTF: install (Mac: double-click > Install in Font Book; Windows: right-click > Install).\nWOFF: for the web (@font-face).\nWeights other than your tracing are made by contour offsetting: check them before professional use.\n',
+      famReadme: 'Family generated with Police Atelier.\nOTF: install (Mac: double-click > Install in Font Book; Windows: right-click > Install).\nTTF: same font with TrueType outlines (Android, older engines).\nWOFF: for the web (@font-face).\nWeights other than your tracing are made by contour offsetting: check them before professional use.\n',
       assignFromImage: 'Assign from image', pickBoxFor: 'Click the box in the image that shows “{k}”.', fewTraced: 'few glyphs come from your image',
       lgOk: 'assigned', lgSus: 'to check', lgNone: 'unassigned', nextReview: 'Next to check ({n})', allReviewed: 'All checked ✓', missingLab: 'Not found (click = assign to selected box):',
       method: 'Threshold method', methodOtsu: 'Global (Otsu, lighting corrected)', methodSauvola: 'Adaptive (Sauvola)', working: 'Analysing…', resized: 'Image reduced from {a} to {b} px for analysis.',
@@ -67,7 +67,7 @@
       legend: 'Cream = traced from your image · Blue = derived from your glyphs (P→R, n→r, mirror, accent) · Dotted grey = automatically generated (basic skeleton) · Dotted red = missing',
       baseline: 'Baseline offset', scale: 'Scale', lsb: 'Left sidebearing', rsb: 'Right sidebearing', spacing: 'Global spacing', tracking: 'Tracking',
       family: 'Family', style: 'Style', version: 'Version', previewText: 'The quick brown fox jumps over the lazy dog. سلام محمد 0123456789',
-      exportOTF: 'Download OTF', exportWOFF: 'Download WOFF', exportJSON: 'Project JSON', importJSON: 'Open project', reset: 'Clear all',
+      exportOTF: 'Download OTF', exportTTF: 'Download TTF', exportWOFF: 'Download WOFF', exportJSON: 'Project JSON', importJSON: 'Open project', reset: 'Clear all',
       noImage: 'No image yet. Start by dropping a photo or a filled-in sheet.', tplFound: 'Template detected', freeFound: 'Free text', glyphsFound: 'glyphs found',
       statusBuilt: 'Font built', valid: 're-parsed successfully by opentype.js', rtl: 'right-to-left detected', notFound: 'Template not found: make sure the 4 black marks are visible.',
       kabNote: '', fileHelp: 'Install: Mac → double-click then “Install” (Font Book). Windows → right-click > Install.'
@@ -75,7 +75,7 @@
     kab: { // Taqbaylit — tasuqqilt s wazal n tazwart, ilaq ad tettwasenqed
       noneAssigned: '{n} n talɣiwin i {expected} n isekkilen, maca ulac ayen yettwasegzan.', assignInOrder: 'Segzi s umizzwer', gridEmpty: 'Sers tugna akken ad twaliḍ isekkilen.', gridEmptyRun: 'Ulac asekkil yettwasegzan.',
       s7: '6. Tawacult n tɣaniwin', famItalic: 'Aknan i yal tazurant', kerning: 'Aqerreb awurman (AV, To, Ty, LT…)',
-      famPreview: 'Taskant n twacult', famExport: 'Sifeḍ tawacult (ZIP : OTF + WOFF)', famNone: 'Fren ma drus yiwet n tzurant.',
+      famPreview: 'Taskant n twacult', famExport: 'Sifeḍ tawacult (ZIP : OTF + TTF + WOFF)', famNone: 'Fren ma drus yiwet n tzurant.',
       famBase: 'Tazurant n usuneɣ-ik : {w} (≈ {p} %) — d nettat i d tamudemt.',
       famDone: '{n} n tɣaniwin ttwaxedmen.', famLimited: '{n} n isekkilen : asenkez yettwasenqes',
       famNote: 'Tasefsit tamuttyt (wght) : ulac — tizurin ttwasunɣent yal yiwet weḥd-s.',
@@ -101,7 +101,7 @@
       legend: 'Yettwasuneɣ = seg tugna-k · Yettwasuffeɣ = seg isekkilen-ik · Yettwasirew = aɣesmar awurman, d amaruz',
       baseline: 'Tasiwelt n yizirig n lsas', scale: 'Taskala', lsb: 'Tama tazelmaḍt', rsb: 'Tama tayeffust', spacing: 'Tallunt tamatut', tracking: 'Tallunt gar isekkilen',
       family: 'Tawacult', style: 'Aɣanib', version: 'Lqem', previewText: 'Azul fell-awen ! Tasefsit-iw tamaynut. سلام محمد 0123456789',
-      exportOTF: 'Sader OTF', exportWOFF: 'Sader WOFF', exportJSON: 'Asenfar JSON', importJSON: 'Ldi asenfar', reset: 'Sfeḍ kullec',
+      exportOTF: 'Sader OTF', exportTTF: 'Sader TTF', exportWOFF: 'Sader WOFF', exportJSON: 'Asenfar JSON', importJSON: 'Ldi asenfar', reset: 'Sfeḍ kullec',
       noImage: 'Ulac tugna akka tura. Bdu s users n tewlaft.', tplFound: 'Tawriqt tettwaf', freeFound: 'Aḍris ilelli', glyphsFound: 'isekkilen ttwafen',
       statusBuilt: 'Tasefsit tebna', valid: 'tettwaɣer akken iwata', rtl: 'tanila seg yefus ɣer zelmeḍ', notFound: 'Ur tettwaf ara tewriqt : 4 n tecraḍ tiberkanin ilaq ad banent.',
       kabNote: '⚑ Tasuqqilt n Teqbaylit d tirmit — Traduction kabyle « au mieux », à relire.', fileHelp: 'Sbedd : Mac → sin n tikkal sakin « Installer ». Windows → tasidt tayeffust > Installer.'

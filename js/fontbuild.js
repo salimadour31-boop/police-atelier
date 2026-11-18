@@ -170,13 +170,17 @@
     return new Uint8Array([...W, ...scriptList, ...featList, ...lookupList]);
   }
 
-  /** Réécrit le binaire SFNT : ajoute GPOS et corrige les champs de style (macStyle, fsSelection, italicAngle, pente du caret) */
+  /** Réécrit le binaire SFNT : ajoute GPOS, remplace/retire des tables et corrige les champs de style (macStyle, fsSelection, italicAngle, pente du caret) */
   function finalizeSfnt(ab, o = {}) {
     const v = new DataView(ab), n = v.getUint16(4), tabs = {};
     for (let i = 0; i < n; i++) { const r = 12 + 16 * i, tag = String.fromCharCode(...new Uint8Array(ab, r, 4)); tabs[tag] = new Uint8Array(ab.slice(v.getUint32(r + 8), v.getUint32(r + 8) + v.getUint32(r + 12))); }
+    if (o.drop) for (const t of o.drop) delete tabs[t];
+    if (o.replace) for (const t in o.replace) tabs[t] = o.replace[t];
     if (o.kern && o.kern.length) tabs.GPOS = gposTable(o.kern);
     const dv = t => new DataView(tabs[t].buffer, tabs[t].byteOffset, tabs[t].byteLength);
     if (o.macStyle != null) dv('head').setUint16(44, o.macStyle);
+    if (o.numberOfHMetrics != null) dv('hhea').setUint16(34, o.numberOfHMetrics);
+    if (o.indexToLocFormat != null) dv('head').setInt16(50, o.indexToLocFormat);
     if (o.fsSelection != null) dv('OS/2').setUint16(62, o.fsSelection);
     if (o.weightClass != null) dv('OS/2').setUint16(4, o.weightClass);
     if (o.italicAngle) {
@@ -186,7 +190,7 @@
     const tags = Object.keys(tabs).sort(), nt = tags.length;
     let total = 12 + 16 * nt; const offs = tags.map(t => { const o2 = total; total += (tabs[t].length + 3) & ~3; return o2; });
     const out = new ArrayBuffer(total), w = new DataView(out), u8 = new Uint8Array(out);
-    const es = Math.floor(Math.log2(nt)); w.setUint32(0, v.getUint32(0)); w.setUint16(4, nt); w.setUint16(6, 16 * 2 ** es); w.setUint16(8, es); w.setUint16(10, nt * 16 - 16 * 2 ** es);
+    const es = Math.floor(Math.log2(nt)); w.setUint32(0, o.sfntVersion != null ? o.sfntVersion : v.getUint32(0)); w.setUint16(4, nt); w.setUint16(6, 16 * 2 ** es); w.setUint16(8, es); w.setUint16(10, nt * 16 - 16 * 2 ** es);
     const csum = (buf, off, len) => { let s = 0; const d = new DataView(buf); for (let i = 0; i < len; i += 4) s = (s + d.getUint32(off + i)) >>> 0; return s; };
     if (tabs.head) dv('head').setUint32(8, 0);
     tags.forEach((t, i) => { u8.set(tabs[t], offs[i]); const r = 12 + 16 * i; for (let j = 0; j < 4; j++) w.setUint8(r + j, t.charCodeAt(j)); w.setUint32(r + 4, csum(out, offs[i], (tabs[t].length + 3) & ~3)); w.setUint32(r + 8, offs[i]); w.setUint32(r + 12, tabs[t].length); });
@@ -222,6 +226,101 @@
     return out;
   }
 
-  Object.assign(PA, { autoKern, gposTable, finalizeSfnt, fontBinary, KERN_PAIRS, glyphInfo, joinSides, buildFont, addArabicGSUB, toWOFF });
+  /* ---------- Export TTF (contours TrueType quadratiques) ---------- */
+  // opentype.js n'écrit que du CFF : les contours cubiques sont convertis en
+  // quadratiques par morceaux (contrôle optimal, découpe récursive) puis
+  // encodés à la main dans glyf/loca, avec un maxp 1.0 et le sfntVersion TrueType.
+  const QUAD_TOL = 1.5, QUAD_DEPTH = 8;
+  /** Point d'une cubique p = [x0,y0,c1x,c1y,c2x,c2y,x3,y3] au paramètre t */
+  function cubicPoint(p, t) { const u = 1 - t; return [
+    u * u * u * p[0] + 3 * u * u * t * p[2] + 3 * u * t * t * p[4] + t * t * t * p[6],
+    u * u * u * p[1] + 3 * u * u * t * p[3] + 3 * u * t * t * p[5] + t * t * t * p[7]]; }
+  /** Contrôle optimal de la quadratic approximant une cubique (extrémités imposées) : c = (3c1 + 3c2 − p0 − p3) / 4 */
+  function quadControl(p) { return [Math.round((-p[0] + 3 * p[2] + 3 * p[4] - p[6]) / 4), Math.round((-p[1] + 3 * p[3] + 3 * p[5] - p[7]) / 4)]; }
+  function quadPoint(p0, c, p3, t) { const u = 1 - t; return [u * u * p0[0] + 2 * u * t * c[0] + t * t * p3[0], u * u * p0[1] + 2 * u * t * c[1] + t * t * p3[1]]; }
+  /** Découpe une cubique en quadratiques si l'écart dépasse la tolérance ; renvoie [{c:[x,y], e:[x,y]}, …] */
+  function fitQuad(p, depth = 0) {
+    const c = quadControl(p), p0 = [p[0], p[1]], p3 = [p[6], p[7]];
+    let err = 0;
+    for (const t of [0.25, 0.5, 0.75]) { const q = quadPoint(p0, c, p3, t), b = cubicPoint(p, t); err = Math.max(err, Math.hypot(b[0] - q[0], b[1] - q[1])); }
+    if (err <= QUAD_TOL || depth >= QUAD_DEPTH) return [{ c, e: p3 }];
+    const mid = cubicPoint(p, 0.5);
+    const a = [p[0], p[1], (p[0] + p[2]) / 2, (p[1] + p[3]) / 2, (p[0] + 2 * p[2] + p[4]) / 4, (p[1] + 2 * p[3] + p[5]) / 4, mid[0], mid[1]];
+    const b2 = [mid[0], mid[1], (p[2] + 2 * p[4] + p[6]) / 4, (p[3] + 2 * p[5] + p[7]) / 4, (p[4] + p[6]) / 2, (p[5] + p[7]) / 2, p[6], p[7]];
+    return [...fitQuad(a, depth + 1), ...fitQuad(b2, depth + 1)];
+  }
+  /** Commandes opentype.js -> contours TrueType [{x, y, on}] ; contrôle confondu avec la corde = ligne (point on-curve) */
+  function pathToTTPoints(path) {
+    const contours = [];
+    let cur = null;
+    for (const cmd of path.commands) {
+      if (cmd.type === 'M') { cur = [{ x: Math.round(cmd.x), y: Math.round(cmd.y), on: true }]; contours.push(cur); }
+      else if (cmd.type === 'Z' || !cur) { continue; }
+      else if (cmd.type === 'L') { cur.push({ x: Math.round(cmd.x), y: Math.round(cmd.y), on: true }); }
+      else if (cmd.type === 'Q') { cur.push({ x: Math.round(cmd.x1), y: Math.round(cmd.y1), on: false }, { x: Math.round(cmd.x), y: Math.round(cmd.y), on: true }); }
+      else if (cmd.type === 'C') {
+        let l = cur[cur.length - 1], p = [l.x, l.y, cmd.x1, cmd.y1, cmd.x2, cmd.y2, cmd.x, cmd.y];
+        for (const q of fitQuad(p)) {
+          const ex = q.e[0] - l.x, ey = q.e[1] - l.y, dev = Math.abs(ex * (q.c[1] - l.y) - (q.c[0] - l.x) * ey); // produit vectoriel : 0 si alignés
+          const straight = dev / (Math.hypot(ex, ey) || 1) < 0.75;
+          if (straight) { cur.push({ x: Math.round(q.e[0]), y: Math.round(q.e[1]), on: true }); }
+          else { cur.push({ x: q.c[0], y: q.c[1], on: false }, { x: Math.round(q.e[0]), y: Math.round(q.e[1]), on: true }); }
+          l = cur[cur.length - 1];
+        }
+      }
+    }
+    // point final confondu avec le point de départ : retiré (la fermeture est implicite)
+    for (const c of contours) { const f = c[0], g = c[c.length - 1]; if (c.length > 1 && f.x === g.x && f.y === g.y && f.on && g.on) c.pop(); }
+    return contours;
+  }
+  /** Glyphe simple -> octets glyf (drapeaux simples, deltas x/y en int16, longueur paire) */
+  function encodeSimpleGlyph(contours) {
+    contours = (contours || []).filter(c => c.length);
+    if (!contours.length) return null;
+    const flat = contours.flat();
+    const xMin = Math.min(...flat.map(p => p.x)), xMax = Math.max(...flat.map(p => p.x));
+    const yMin = Math.min(...flat.map(p => p.y)), yMax = Math.max(...flat.map(p => p.y));
+    const numPts = flat.length;
+    const buf = new Uint8Array(10 + 2 * contours.length + 2 + numPts + 4 * numPts + 1), dv = new DataView(buf.buffer);
+    let o = 0;
+    const u16 = v => { dv.setUint16(o, v & 0xFFFF); o += 2; };
+    u16(contours.length); u16(xMin); u16(yMin); u16(xMax); u16(yMax);
+    let n = 0; for (const c of contours) { n += c.length; u16(n - 1); }
+    u16(0);
+    for (const p of flat) dv.setUint8(o++, p.on ? 0x01 : 0x00);
+    let px = 0, py = 0;
+    for (const p of flat) { dv.setInt16(o, p.x - px); o += 2; px = p.x; }
+    for (const p of flat) { dv.setInt16(o, p.y - py); o += 2; py = p.y; }
+    if (buf.length % 2) dv.setUint8(o, 0);
+    return buf;
+  }
+  function maxpTable(numGlyphs, maxPoints, maxContours) {
+    const b = new Uint8Array(32), dv = new DataView(b.buffer);
+    dv.setUint32(0, 0x00010000); dv.setUint16(4, numGlyphs); dv.setUint16(6, maxPoints); dv.setUint16(8, maxContours);
+    dv.setUint16(14, 2); dv.setUint16(24, 64);
+    return b;
+  }
+  /** Binaire TTF d'une police construite par buildFont : contours quadratiques (glyf/loca/maxp 1.0),
+   *  hmtx réécrit (lsb = xMin du glyf, cohérence exigée des moteurs TrueType), sfntVersion TrueType */
+  function ttfBinary(built) {
+    const font = built.font, n = font.numGlyphs || font.glyphs.length;
+    const entries = [], xmins = []; let maxPoints = 0, maxContours = 0, off = 0;
+    for (let i = 0; i < n; i++) {
+      const contours = pathToTTPoints(font.glyphs.get(i).path), g = encodeSimpleGlyph(contours);
+      if (g) { let pts = 0; for (const c of contours) pts += c.length; maxPoints = Math.max(maxPoints, pts); maxContours = Math.max(maxContours, contours.length); }
+      entries.push(g); xmins.push(contours.length ? Math.min(...contours.flat().map(p => p.x)) : 0);
+    }
+    const loca = new Uint8Array(4 * (n + 1)), dvL = new DataView(loca.buffer);
+    entries.forEach((g, i) => { dvL.setUint32(i * 4, off); if (g) off += g.length; });
+    dvL.setUint32(n * 4, off);
+    const glyf = new Uint8Array(off); let o = 0;
+    for (const g of entries) if (g) { glyf.set(g, o); o += g.length; }
+    const hmtx = new Uint8Array(4 * n), dvM = new DataView(hmtx.buffer);
+    for (let i = 0; i < n; i++) { dvM.setUint16(4 * i, Math.max(0, Math.min(4000, font.glyphs.get(i).advanceWidth))); dvM.setInt16(4 * i + 2, Math.max(-2000, Math.min(2000, xmins[i]))); }
+    const st = built.styleInfo || {};
+    return finalizeSfnt(font.toArrayBuffer(), { kern: built.kern, macStyle: st.macStyle, fsSelection: st.fsSelection, weightClass: st.weightClass, italicAngle: st.italicAngle, sfntVersion: 0x00010000, numberOfHMetrics: n, indexToLocFormat: 1, drop: ['CFF '], replace: { glyf, loca, maxp: maxpTable(n, maxPoints, maxContours), hmtx } });
+  }
+
+  Object.assign(PA, { autoKern, gposTable, finalizeSfnt, fontBinary, ttfBinary, fitQuad, pathToTTPoints, KERN_PAIRS, glyphInfo, joinSides, buildFont, addArabicGSUB, toWOFF });
   if (typeof module !== 'undefined') module.exports = PA;
 })(typeof self !== 'undefined' ? self : globalThis);
