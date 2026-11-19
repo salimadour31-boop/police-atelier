@@ -142,7 +142,8 @@
     if (!ref) return [];
     // noyau : rapprocher l'écart moyen de la référence, sans que le point le plus proche descende sous 45 % de l'écart de référence
     const kernVal = g => Math.round(Math.max(-120, Math.min(0, Math.max((ref.avg - g.avg) * 0.4, ref.min * 0.45 - g.min))) / 5) * 5;
-    const cand = new Set(KERN_PAIRS);
+    // paires stockées avec séparateur NUL (les clés arabes font plusieurs caractères)
+    const cand = new Set(KERN_PAIRS.map(x => x[0] + '\u0000' + x[1]));
     // balayage : même motif que To/Ta, généralisé à toute forme — le premier glyphe a ses colonnes
     // extrêmes à droite uniquement dans sa moitié haute (bras, diagonales) et le second n'a aucune
     // encre face à ces bandes et un bord gauche courbe ; une paire à bords droits (nn, oo…) est épargnée
@@ -161,16 +162,26 @@
           if (kb.some(k => ex.some(e => Math.abs(e - k) <= 3))) continue;
           const lv = kb.map(k => B.p.L[k]);
           if (Math.max(...lv) - Math.min(...lv) < 0.12 * B.adv) continue;
-          const g = pairGap(A, B); if (g && kernVal(g) <= -10) cand.add(keys[i] + keys[j]);
+          const g = pairGap(A, B); if (g && kernVal(g) <= -10) cand.add(keys[i] + '\u0000' + keys[j]);
         }
+      }
+    }
+    // arabe : le script joint les lettres entre elles (approches nulles), mais une forme isolée,
+    // un chiffre ou la ligature lam-alif suivis d'une ponctuation (arabe ou latine) peuvent être trop serrés
+    const pars = Object.keys(finals).filter(k => '\u060c\u061b\u061f.!?;:,'.includes(k));
+    if (pars.length) {
+      for (const a of Object.keys(finals)) {
+        if (!PA.isArabicKey(a) || a.includes('.')) continue;
+        for (const b of pars) cand.add(a + '\u0000' + b);
       }
     }
     const out = [];
     for (const pr of cand) {
-      const A = get(pr[0]), B = get(pr[1]); if (!A || !B) continue;
+      const z = pr.split('\u0000');
+      const A = get(z[0]), B = get(z[1]); if (!A || !B) continue;
       const g = pairGap(A, B); if (!g) continue;
       const k = kernVal(g);
-      if (k <= -10) out.push([index[pr[0]], index[pr[1]], k, pr]);
+      if (k <= -10) out.push([index[z[0]], index[z[1]], k, z[0] + z[1]]);
     }
     return out;
   }
@@ -191,8 +202,9 @@
     sets.forEach(a => sub.push(...a)); sub.push(...cov);
     // --- listes ---
     const script = []; s16(script, 4); s16(script, 0); /* LangSys */ s16(script, 0); s16(script, 0xFFFF); s16(script, 1); s16(script, 0);
-    const scriptList = []; s16(scriptList, 2); const sTags = ['DFLT', 'latn'];
-    sTags.forEach((tg, i) => { for (const ch of tg) scriptList.push(ch.charCodeAt(0)); s16(scriptList, 2 + 6 * 2 + i * script.length); });
+    const sTags = ['DFLT', 'arab', 'latn'];
+    const scriptList = []; s16(scriptList, sTags.length);
+    sTags.forEach((tg, i) => { for (const ch of tg) scriptList.push(ch.charCodeAt(0)); s16(scriptList, 2 + 6 * sTags.length + i * script.length); });
     sTags.forEach(() => scriptList.push(...script));
     const featList = []; s16(featList, 1); for (const ch of 'kern') featList.push(ch.charCodeAt(0)); s16(featList, 8); s16(featList, 0); s16(featList, 1); s16(featList, 0);
     const lookupList = []; s16(lookupList, 1); s16(lookupList, 4); s16(lookupList, 2); s16(lookupList, 0); s16(lookupList, 1); s16(lookupList, 8); lookupList.push(...sub);
