@@ -21,8 +21,8 @@ Déposez une photo ou un scan de lettres : Police Atelier analyse la structure d
    La police contient toujours A-Z, a-z, 0-9, l'espace et la ponctuation de base.
 6. **Édition** : décalage de ligne de base, échelle, approches par glyphe ; espacement global, interlettrage ; aperçu en direct (API FontFace) ; nom de famille, style, version.
 7. **Famille de styles** : Thin, Light, Regular, Medium, SemiBold, Bold, ExtraBold, Black (+ italique de chacune). La graisse de votre tracé est détectée et sert de référence ; les autres sont obtenues par **décalage réel du contour** (dilatation/érosion euclidienne sur une trame fine puis retracé en Bézier : pas d'auto-intersection), horizontales moins épaissies que les verticales (contraste gardé), hauteur d'x / capitales / ligne de base conservées, contreformes protégées (le décalage est réduit glyphe par glyphe si un œil se fermait), approches ajustées à la graisse. Italique : inclinaison de 11°, approches calculées sur le dessin droit. Noms (ID 1/2/4/6/16/17), `usWeightClass`, `fsSelection`, `macStyle`, `italicAngle` réglés pour que Font Book et Windows regroupent la famille (Regular/Italic/Bold/Bold Italic). Export **ZIP** (OTF + WOFF). Pas de police variable : les graisses sont retracées séparément, leurs points ne sont pas interpolables de façon fiable.
-8. **Crénage automatique** (désactivable) : paires courantes (AV, To, Ty, LT, P., Va…) calculées sur les profils réels des glyphes, écrites dans une table **GPOS `kern`**.
-9. **Export** : **OTF** (CFF, via opentype.js), **WOFF**, **projet JSON** (réouvrable). Tables name, OS/2, hhea, post, cmap ; pour l'arabe : cmap des lettres de base **et** des formes de présentation B, GSUB `init`/`medi`/`fina` + `rlig`/`liga` (lam-alif).
+8. **Crénage automatique** (désactivable) : liste classique élargie (AV, To, Ty, LT, Va…, y compris les minuscules à gauche rond/diagonal et les lettres accentuées) **plus** un balayage des profils qui détecte, pour toute forme (chiffres, ponctuation, alphabets non latins), les paires du même motif que To (bras du premier glyphe au-dessus d'un bord gauche courbe) ; en arabe, formes isolées, chiffres et lam-alif devant la ponctuation arabe ou latine. Valeurs calculées sur les profils réels des glyphes, écrites dans une table **GPOS `kern`** couvrant les scripts `DFLT`, `latn` **et `arab`**.
+9. **Export** : **OTF** (CFF, via opentype.js), **TTF** (contours quadratiques : conversion maison des Béziers cubiques, glyf/loca écrites à la main), **WOFF**, **projet JSON** (réouvrable). Tables name, OS/2, hhea, post, cmap ; pour l'arabe : cmap des lettres de base **et** des formes de présentation B, GSUB `init`/`medi`/`fina` + `rlig`/`liga` (lam-alif), GPOS `kern` pour le script `arab`.
 
 Interface en **français**, **anglais** et **taqbaylit** (traduction au mieux, à relire), avec affichage optionnel en **tifinagh**.
 
@@ -31,20 +31,21 @@ Interface en **français**, **anglais** et **taqbaylit** (traduction au mieux, �
 - **Mac** : double-cliquez sur le fichier `.otf` → **Livre des polices** (Font Book) s'ouvre → **Installer**.
 - **Windows** : clic droit sur le fichier `.otf` → **Installer** (ou « Installer pour tous les utilisateurs »).
 - Web : utilisez le `.woff` avec `@font-face`.
+- Android et moteurs plus anciens : le `.ttf` (contours TrueType) est également fourni.
 
 ## Conseils photo
 
-- Feuille bien à plat, **en portrait**, les 4 marques noires visibles ; pas besoin d'être parfaitement de face : la perspective est corrigée.
+- Feuille bien à plat, si possible **en portrait**, les 4 marques noires visibles ; pas besoin d'être parfaitement de face : la perspective est corrigée. Une photo tournée (90°, 180°, 270°) est détectée et redressée automatiquement, avec un bandeau d'information.
 - L'éclairage inégal est compensé (estimation du fond du papier). Si des lettres pâles disparaissent, essayez la méthode **Adaptatif (Sauvola)**.
 - Les messages en haut de la vue indiquent ce qui a été ignoré (bords, traits de cadre, poussières) et si le nombre de formes ne correspond pas à l'alphabet attendu.
 
 ## Limites (honnêtes)
 
 - Les photos d'écriture manuscrite demandent un **bon contraste** (feutre noir, papier blanc, lumière uniforme, pas d'ombre). Le stylo bille fin ou le crayon donnent des résultats médiocres.
-- En texte libre, les lettres doivent être **séparées** : des lettres attachées (cursive, arabe lié) forment un seul bloc. Pour l'arabe, utilisez la planche.
+- En texte libre, les liaisons fines entre lettres attachées sont **coupées automatiquement** (aux creux d'encre). Une cursive très fusionnée (traits épais en hauteur sur toute la jonction) peut encore former un seul bloc. Pour l'arabe, utilisez la planche.
 - Les glyphes **générés** sont des squelettes simples, pas du dessin typographique : remplacez-les en les dessinant.
-- Crénage limité à une liste de paires courantes ; pas de hinting ; pas d'export TTF (contours quadratiques) pour l'instant — l'OTF s'installe partout.
-- La planche doit être photographiée en portrait (pas de détection de rotation à 90°/180°).
+- Le crénage **resserre** seulement les paires trop serrées (il ne desserre jamais) ; en arabe, les lettres jointes n'en ont pas besoin (liaison = approche nulle), seules les formes isolées/chiffres/ponctuation sont crénées ; pas de hinting ; l'export TTF approxime les courbes cubiques par des quadratiques (écart inférieur à une unité et demie) — pour une fidélité maximale au tracé, préférez l'OTF, qui s'installe partout.
+- La planche peut être photographiée en paysage ou retournée : l'orientation est détectée et corrigée automatiquement. Pour la planche latine à 180° (feuille à l'envers), la détection se base sur la ligne de base des cases écrites : au moins **8 cases remplies** sont nécessaires.
 - Les graisses extrêmes (Thin, Black) d'un tracé très fin ou très gras peuvent être limitées pour garder les contreformes ouvertes ; l'italique est un oblique (pas de a/f cursifs).
 - Une image avec une ou deux lettres seulement ne suffit pas : rien n'est deviné, le reste est généré (gris).
 - La traduction kabyle et la translittération tifinagh sont à relire par des locuteurs.
@@ -55,12 +56,12 @@ Pur HTML/CSS/JS, aucune compilation, aucun serveur : ouvrez `index.html` (ou ser
 
 ```
 js/imageproc.js  niveaux, Otsu, anti-poussière, deskew, homographie
-js/segment.js    composantes connexes, fusion des signes, ordre de lecture
+js/segment.js    composantes connexes, fusion des points, séparation des lettres attachées, ordre de lecture
 js/trace.js      marching squares + Bézier cubiques, rastérisation, IoU
 js/analyse.js    graisse, contraste, inclinaison, empattements, métriques
 js/pipeline.js   enchaînement planche / texte libre -> glyphes en unités
 js/synth.js      dérivation, composition, squelettes, formes arabes
-js/fontbuild.js  OTF (opentype.js), GSUB arabe, GPOS kern, WOFF
+js/fontbuild.js  OTF (opentype.js), TTF (glyf/loca maison), GSUB arabe, GPOS kern, WOFF
 js/family.js     graisses (décalage de contour), italique, noms de famille
 js/zip.js        archive ZIP (famille)
 js/template.js   planches PNG/PDF   ·   js/i18n.js  FR/EN/KAB + tifinagh   ·   js/app.js  interface
@@ -93,7 +94,7 @@ Cascade HarfBuzz (hb-view) des styles générés :
 ---
 
 ### English summary
-Police Atelier turns a photo or scan of letters (template sheet or free alphabet line) into an installable **OTF** font, entirely in your browser. It cleans the image, segments glyphs (merging dots and accents), traces them to cubic Béziers with its own tracer, measures metrics and structure (weight, contrast, slant, x-height ratio, serifs), fills missing glyphs (derived or clearly flagged as generated) and exports OTF, WOFF and a JSON project. It can also generate a whole **family** (Thin → Black + italics) by real outline offsetting, with automatic GPOS kerning, exported as a ZIP. Latin (French, Kabyle) and **Arabic** with positional forms and OpenType GSUB (init/medi/fina, lam-alef). MIT licence.
+Police Atelier turns a photo or scan of letters (template sheet or free alphabet line) into an installable **OTF** font, entirely in your browser. It cleans the image, segments glyphs (merging dots and accents), traces them to cubic Béziers with its own tracer, measures metrics and structure (weight, contrast, slant, x-height ratio, serifs), fills missing glyphs (derived or clearly flagged as generated) and exports OTF, TTF, WOFF and a JSON project. It can also generate a whole **family** (Thin → Black + italics) by real outline offsetting, with automatic GPOS kerning, exported as a ZIP. Latin (French, Kabyle) and **Arabic** with positional forms and OpenType GSUB (init/medi/fina, lam-alef). MIT licence.
 
 ### Agzul s Teqbaylit (tasuqqilt s wazal n tazwart)
 Police Atelier yettarra tawlaft n isekkilen d tasefsit **OTF** i tzemreḍ ad tesbeddeḍ, deg yiminig-ik kan, war aqeddac. Yesizdig tugna, yebḍa isekkilen, yesuneɣ-iten, yettak-d tasleḍt n teɣessa, yerennu isekkilen ixuṣṣen (yettwacreḍ « yettwasirew »), sakin yessufuɣ OTF, WOFF d JSON. Latinit (tafransist, taqbaylit) d taɛrabt. Turagt MIT.

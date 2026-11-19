@@ -3,7 +3,8 @@ import json, string, sys, subprocess
 from fontTools.ttLib import TTFont
 sys.path.insert(0, 'tests')
 from iou import iou_all
-REF = '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'
+from font_paths import find
+REF = find('DejaVuSans.ttf')
 def hb_shape(path, text):
     """Mise en forme HarfBuzz (si uharfbuzz est installé) : noms des glyphes obtenus."""
     import uharfbuzz as hb

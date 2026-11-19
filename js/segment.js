@@ -25,7 +25,7 @@
           if (data[q] && !lab[q]) { lab[q] = id; stack[sp++] = q; }
         }
       }
-      out.push({ x0, y0, x1, y1, area: px.length, pixels: Int32Array.from(px) });
+      out.push({ x0, y0, x1, y1, area: px.length, pixels: Int32Array.from(px), binW: w });
     }
     return out;
   }
@@ -90,6 +90,69 @@
     return ra > 0.5 && ra < 2 && Math.abs((a.x0 + a.x1) - (b.x0 + b.x1)) < (b.x1 - b.x0 + 1);
   }
 
+  /** Découpe les composantes trop larges (lettres attachées, mot cursif) aux vallées d'encre :
+   *  une colonne quasi vide entre deux colonnes bien remplies sépare deux lettres collées.
+   *  Prudent : corps seulement (pas les marques fusionnées), largeur nettement supérieure à la
+   *  médiane, pièces jamais plus petites qu'une fraction de la lettre médiane. */
+  function splitTouching(comps) {
+    const mh = median(comps.map(c => c.y1 - c.y0 + 1)) || 1;
+    const bodies = comps.filter(c => c.parts == null && c.y1 - c.y0 + 1 >= 0.45 * mh);
+    let mw = median(bodies.map(c => c.x1 - c.x0 + 1)) || 1;
+    // si tout le texte est fusionné en un seul bloc, la médiane devient la largeur du bloc
+    // lui-même : on l'ancre alors à la hauteur médiane (largeur d'une lettre latine modèle).
+    mw = Math.min(Math.max(mw, 0.35 * mh), 0.9 * mh);
+    const out = [];
+    for (const c of comps) {
+      const w = c.x1 - c.x0 + 1;
+      if (c.parts != null || w < 1.6 * mw || w < 4 || c.y1 - c.y0 + 1 < 0.45 * mh) { out.push(c); continue; }
+      const cnt = new Int32Array(w);
+      for (const p of c.pixels) cnt[(p % c.binW) - c.x0]++;
+      const peak = Math.max(...cnt), minRun = Math.max(2, Math.round(0.06 * w));
+      // sans aucune tige verticale (W majuscule : diagonales seulement, pic bien < hauteur),
+      // les vallées basses sont des sommets de lettre, pas des jonctions : on ne coupe pas.
+      if (peak < 0.55 * (c.y1 - c.y0 + 1)) { out.push(c); continue; }
+      const runs = [];
+      for (let x = 0; x < w; x++) {
+        // 0,25 : les jonctions manuscrites portent parfois plus d'encre qu'un simple filet ;
+        // les lettres creuses restent épargnées par la contrainte de largeur de course plus bas.
+        if (cnt[x] > 0.25 * peak) continue;
+        if (cnt[x] > 0.25 * peak) continue;
+        const r = runs[runs.length - 1];
+        if (r && r[1] >= x - 1) r[1] = x; else runs.push([x, x]);
+      }
+      const cuts = [];
+      for (const [a, b] of runs) {
+        const cx = Math.round((a + b) / 2);
+        if (b - a + 1 > minRun) continue;
+        if (cx < 0.45 * mw || w - cx < 0.45 * mw) continue;
+        if (cuts.length && cx - cuts[cuts.length - 1] < 0.55 * mw) continue;
+        // une jonction est encadrée de deux colonnes pleines ; au sommet d'un V ou d'un W,
+        // l'encre remonte en pente et les flancs proches restent presque vides -> pas de coupe.
+        let lf = -1, rf = -1;
+        for (let x = Math.max(0, a - 3); x < a; x++) if (cnt[x] > lf) lf = cnt[x];
+        for (let x = b + 1; x <= Math.min(w - 1, b + 3); x++) if (cnt[x] > rf) rf = cnt[x];
+        if (lf < 0.45 * peak || rf < 0.45 * peak) continue;
+        cuts.push(cx);
+      }
+      if (!cuts.length) { out.push(c); continue; }
+      const parts = Array.from({ length: cuts.length + 1 }, () => []);
+      // cuts[] est relatif Ã  c.x0 : on convertit la colonne absolue avant de comparer
+      // cuts[] est relatif à c.x0 et x n'est pas monotone (parcours ligne par ligne) :
+      // la pièce de chaque pixel est donc recalculée individuellement.
+      for (const p of c.pixels) { let q = 0; const x = (p % c.binW) - c.x0; while (q < cuts.length && x > cuts[q]) q++; parts[q].push(p); }
+      const pieces = [];
+      for (const pa of parts) {
+        if (!pa.length) continue;
+        const g = Object.assign({}, c, { pixels: Int32Array.from(pa), area: pa.length });
+        g.x0 = Infinity; g.x1 = -1; g.y0 = Infinity; g.y1 = -1;
+        for (const p of pa) { const x = p % c.binW, y = (p - x) / c.binW; if (x < g.x0) g.x0 = x; if (x > g.x1) g.x1 = x; if (y < g.y0) g.y0 = y; if (y > g.y1) g.y1 = y; }
+        if (g.area >= Math.max(4, 0.06 * c.area) && g.x1 - g.x0 + 1 >= 0.35 * mw) pieces.push(g);
+      }
+      if (pieces.length < 2) out.push(c); else out.push(...pieces);
+    }
+    return out;
+  }
+
   /** Regroupe en lignes puis trie dans l'ordre de lecture (haut→bas, gauche→droite) */
   function readingOrder(glyphs) {
     // 1) lignes par regroupement 1D des centres des « corps » (composantes de taille normale),
@@ -138,6 +201,6 @@
     return readingOrder(comps);
   }
 
-  Object.assign(PA, { components, mergeMarks, readingOrder, cropGlyph, segment, median });
+  Object.assign(PA, { components, mergeMarks, splitTouching, readingOrder, cropGlyph, segment, median });
   if (typeof module !== 'undefined') module.exports = PA;
 })(typeof self !== 'undefined' ? self : globalThis);

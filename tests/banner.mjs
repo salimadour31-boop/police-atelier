@@ -1,7 +1,7 @@
 // Rien d'attribuable automatiquement : bandeau + « Attribuer dans l'ordre » doit remplir la police
 import { chromium } from 'playwright-core';
 const url = process.argv[2] || 'http://127.0.0.1:8765/index.html';
-const b = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args: ['--no-sandbox'] }); const p = await b.newPage(); const errs = [];
+const b = await chromium.launch({ executablePath: process.env.CHROME || '/usr/bin/google-chrome', args: ['--no-sandbox'] }); const p = await b.newPage(); const errs = [];
 p.on('pageerror', e => errs.push(e.message));
 await p.goto(url);
 const empty0 = await p.textContent('#grid');

@@ -109,9 +109,16 @@
   }
 
   /* ---------- Crénage automatique (GPOS kern) ---------- */
-  // paires courantes ; la valeur vient des profils réels des glyphes, pas d'une table figée
+  // paires courantes ; la valeur vient des profils réels des glyphes, pas d'une table figée ;
+  // en plus, un balayage des profils détecte toute paire trop serrée (lettres accentuées comprises)
   const KERN_PAIRS = ('AV AW AY AT AC AG AO AQ AU Av Aw Ay VA WA YA TA LT LV LW LY Ly L\' FA F. F, PA P. P, TA Ta Tc Te To Tr Ts Tu Tw Ty Ti T. T, ' +
     'Va Ve Vo Vu Wa We Wo Ya Ye Yo Yu Y. Y, V. V, W. W, RT RV RW RY Ka Ke Ko Kv Ky ky av aw ay ov ow oy ox va ve vo wa we wo ya ye yo y. y, v. v, w. w, r. r, f. f,').split(' ').filter(x => x.length === 2);
+  // élargissement : même formule pour les capitales ouvertes/rondes après TVWY et les minuscules
+  // à bord gauche rond ou diagonal (les fûts droits à gauche n'en ont pas besoin : leurs approches suffisent)
+  const CAPS_OUVERTES = 'ACGJOQSUVWY', LOWS_RONDES = 'aàâäæcçdeéèêëfgoôöœqsuvwxyz';
+  for (const l of 'TVWY') for (const r of CAPS_OUVERTES + LOWS_RONDES) KERN_PAIRS.push(l + r);
+  for (const l of 'AFPR') for (const r of LOWS_RONDES) KERN_PAIRS.push(l + r);
+  for (const l of 'vwy') for (const r of LOWS_RONDES) KERN_PAIRS.push(l + r);
   /** profil gauche/droit par bandes horizontales de 25 unités */
   function profile(contours) {
     const L = {}, R = {};
@@ -121,10 +128,11 @@
     }
     return { L, R };
   }
-  function pairGap(A, B) {
+  function pairGap(A, B, tolr) {
+    const a = tolr || 1;
     // écart horizontal entre le bord droit de A et le bord gauche de B, bande par bande (bandes voisines tolérées)
     const gaps = [];
-    for (const k in A.p.R) { const b = +k; let lb = Infinity; for (const d of [-1, 0, 1]) if (B.p.L[b + d] != null) lb = Math.min(lb, B.p.L[b + d]); if (lb < Infinity) gaps.push(A.adv - A.p.R[k] + lb); }
+    for (const k in A.p.R) { const b = +k; let lb = Infinity; for (let d = -a; d <= a; d++) if (B.p.L[b + d] != null) lb = Math.min(lb, B.p.L[b + d]); if (lb < Infinity) gaps.push(A.adv - A.p.R[k] + lb); }
     return gaps.length ? { min: Math.min(...gaps), avg: gaps.reduce((a, b) => a + b, 0) / gaps.length, n: gaps.length } : null;
   }
   function autoKern(finals, index, t) {
@@ -132,15 +140,48 @@
     // référence : écart optique entre deux fûts droits (HH, nn)
     const ref = ['HH', 'nn', 'II'].map(s => get(s[0]) && pairGap(get(s[0]), get(s[1]))).find(Boolean);
     if (!ref) return [];
+    // noyau : rapprocher l'écart moyen de la référence, sans que le point le plus proche descende sous 45 % de l'écart de référence
+    const kernVal = g => Math.round(Math.max(-120, Math.min(0, Math.max((ref.avg - g.avg) * 0.4, ref.min * 0.45 - g.min))) / 5) * 5;
+    // paires stockées avec séparateur NUL (les clés arabes font plusieurs caractères)
+    const cand = new Set(KERN_PAIRS.map(x => x[0] + '\u0000' + x[1]));
+    // balayage : même motif que To/Ta, généralisé à toute forme — le premier glyphe a ses colonnes
+    // extrêmes à droite uniquement dans sa moitié haute (bras, diagonales) et le second n'a aucune
+    // encre face à ces bandes et un bord gauche courbe ; une paire à bords droits (nn, oo…) est épargnée
+    const keys = Object.keys(finals).sort((a, b) => a.localeCompare(b));
+    if (keys.length <= 800) {
+      for (let i = 0; i < keys.length; i++) {
+        const A = get(keys[i]); if (!A) continue;
+        const ka = Object.keys(A.p.R).map(Number); if (ka.length < 4) continue;
+        const maxR = Math.max(...ka.map(k => A.p.R[k])), lo = Math.min(...ka), hi = Math.max(...ka);
+        const ex = ka.filter(k => A.p.R[k] >= maxR - 25);
+        if (!ex.every(k => 2 * k >= lo + hi)) continue;
+        for (let j = 0; j < keys.length; j++) {
+          if (j === i) continue;
+          const B = get(keys[j]); if (!B) continue;
+          const kb = Object.keys(B.p.L).map(Number); if (!kb.length) continue;
+          if (kb.some(k => ex.some(e => Math.abs(e - k) <= 3))) continue;
+          const lv = kb.map(k => B.p.L[k]);
+          if (Math.max(...lv) - Math.min(...lv) < 0.12 * B.adv) continue;
+          const g = pairGap(A, B); if (g && kernVal(g) <= -10) cand.add(keys[i] + '\u0000' + keys[j]);
+        }
+      }
+    }
+    // arabe : le script joint les lettres entre elles (approches nulles), mais une forme isolée,
+    // un chiffre ou la ligature lam-alif suivis d'une ponctuation (arabe ou latine) peuvent être trop serrés
+    const pars = Object.keys(finals).filter(k => '\u060c\u061b\u061f.!?;:,'.includes(k));
+    if (pars.length) {
+      for (const a of Object.keys(finals)) {
+        if (!PA.isArabicKey(a) || a.includes('.')) continue;
+        for (const b of pars) cand.add(a + '\u0000' + b);
+      }
+    }
     const out = [];
-    for (const pr of KERN_PAIRS) {
-      const A = get(pr[0]), B = get(pr[1]); if (!A || !B) continue;
+    for (const pr of cand) {
+      const z = pr.split('\u0000');
+      const A = get(z[0]), B = get(z[1]); if (!A || !B) continue;
       const g = pairGap(A, B); if (!g) continue;
-      // rapprocher l'écart moyen de la référence, sans que le point le plus proche descende sous 45 % de l'écart de référence
-      let k = (ref.avg - g.avg) * 0.4;
-      k = Math.max(k, ref.min * 0.45 - g.min);
-      k = Math.round(Math.max(-120, Math.min(0, k)) / 5) * 5;
-      if (k <= -10) out.push([index[pr[0]], index[pr[1]], k, pr]);
+      const k = kernVal(g);
+      if (k <= -10) out.push([index[z[0]], index[z[1]], k, z[0] + z[1]]);
     }
     return out;
   }
@@ -161,8 +202,9 @@
     sets.forEach(a => sub.push(...a)); sub.push(...cov);
     // --- listes ---
     const script = []; s16(script, 4); s16(script, 0); /* LangSys */ s16(script, 0); s16(script, 0xFFFF); s16(script, 1); s16(script, 0);
-    const scriptList = []; s16(scriptList, 2); const sTags = ['DFLT', 'latn'];
-    sTags.forEach((tg, i) => { for (const ch of tg) scriptList.push(ch.charCodeAt(0)); s16(scriptList, 2 + 6 * 2 + i * script.length); });
+    const sTags = ['DFLT', 'arab', 'latn'];
+    const scriptList = []; s16(scriptList, sTags.length);
+    sTags.forEach((tg, i) => { for (const ch of tg) scriptList.push(ch.charCodeAt(0)); s16(scriptList, 2 + 6 * sTags.length + i * script.length); });
     sTags.forEach(() => scriptList.push(...script));
     const featList = []; s16(featList, 1); for (const ch of 'kern') featList.push(ch.charCodeAt(0)); s16(featList, 8); s16(featList, 0); s16(featList, 1); s16(featList, 0);
     const lookupList = []; s16(lookupList, 1); s16(lookupList, 4); s16(lookupList, 2); s16(lookupList, 0); s16(lookupList, 1); s16(lookupList, 8); lookupList.push(...sub);
@@ -170,13 +212,17 @@
     return new Uint8Array([...W, ...scriptList, ...featList, ...lookupList]);
   }
 
-  /** Réécrit le binaire SFNT : ajoute GPOS et corrige les champs de style (macStyle, fsSelection, italicAngle, pente du caret) */
+  /** Réécrit le binaire SFNT : ajoute GPOS, remplace/retire des tables et corrige les champs de style (macStyle, fsSelection, italicAngle, pente du caret) */
   function finalizeSfnt(ab, o = {}) {
     const v = new DataView(ab), n = v.getUint16(4), tabs = {};
     for (let i = 0; i < n; i++) { const r = 12 + 16 * i, tag = String.fromCharCode(...new Uint8Array(ab, r, 4)); tabs[tag] = new Uint8Array(ab.slice(v.getUint32(r + 8), v.getUint32(r + 8) + v.getUint32(r + 12))); }
+    if (o.drop) for (const t of o.drop) delete tabs[t];
+    if (o.replace) for (const t in o.replace) tabs[t] = o.replace[t];
     if (o.kern && o.kern.length) tabs.GPOS = gposTable(o.kern);
     const dv = t => new DataView(tabs[t].buffer, tabs[t].byteOffset, tabs[t].byteLength);
     if (o.macStyle != null) dv('head').setUint16(44, o.macStyle);
+    if (o.numberOfHMetrics != null) dv('hhea').setUint16(34, o.numberOfHMetrics);
+    if (o.indexToLocFormat != null) dv('head').setInt16(50, o.indexToLocFormat);
     if (o.fsSelection != null) dv('OS/2').setUint16(62, o.fsSelection);
     if (o.weightClass != null) dv('OS/2').setUint16(4, o.weightClass);
     if (o.italicAngle) {
@@ -186,7 +232,7 @@
     const tags = Object.keys(tabs).sort(), nt = tags.length;
     let total = 12 + 16 * nt; const offs = tags.map(t => { const o2 = total; total += (tabs[t].length + 3) & ~3; return o2; });
     const out = new ArrayBuffer(total), w = new DataView(out), u8 = new Uint8Array(out);
-    const es = Math.floor(Math.log2(nt)); w.setUint32(0, v.getUint32(0)); w.setUint16(4, nt); w.setUint16(6, 16 * 2 ** es); w.setUint16(8, es); w.setUint16(10, nt * 16 - 16 * 2 ** es);
+    const es = Math.floor(Math.log2(nt)); w.setUint32(0, o.sfntVersion != null ? o.sfntVersion : v.getUint32(0)); w.setUint16(4, nt); w.setUint16(6, 16 * 2 ** es); w.setUint16(8, es); w.setUint16(10, nt * 16 - 16 * 2 ** es);
     const csum = (buf, off, len) => { let s = 0; const d = new DataView(buf); for (let i = 0; i < len; i += 4) s = (s + d.getUint32(off + i)) >>> 0; return s; };
     if (tabs.head) dv('head').setUint32(8, 0);
     tags.forEach((t, i) => { u8.set(tabs[t], offs[i]); const r = 12 + 16 * i; for (let j = 0; j < 4; j++) w.setUint8(r + j, t.charCodeAt(j)); w.setUint32(r + 4, csum(out, offs[i], (tabs[t].length + 3) & ~3)); w.setUint32(r + 8, offs[i]); w.setUint32(r + 12, tabs[t].length); });
@@ -222,6 +268,101 @@
     return out;
   }
 
-  Object.assign(PA, { autoKern, gposTable, finalizeSfnt, fontBinary, KERN_PAIRS, glyphInfo, joinSides, buildFont, addArabicGSUB, toWOFF });
+  /* ---------- Export TTF (contours TrueType quadratiques) ---------- */
+  // opentype.js n'écrit que du CFF : les contours cubiques sont convertis en
+  // quadratiques par morceaux (contrôle optimal, découpe récursive) puis
+  // encodés à la main dans glyf/loca, avec un maxp 1.0 et le sfntVersion TrueType.
+  const QUAD_TOL = 1.5, QUAD_DEPTH = 8;
+  /** Point d'une cubique p = [x0,y0,c1x,c1y,c2x,c2y,x3,y3] au paramètre t */
+  function cubicPoint(p, t) { const u = 1 - t; return [
+    u * u * u * p[0] + 3 * u * u * t * p[2] + 3 * u * t * t * p[4] + t * t * t * p[6],
+    u * u * u * p[1] + 3 * u * u * t * p[3] + 3 * u * t * t * p[5] + t * t * t * p[7]]; }
+  /** Contrôle optimal de la quadratic approximant une cubique (extrémités imposées) : c = (3c1 + 3c2 − p0 − p3) / 4 */
+  function quadControl(p) { return [Math.round((-p[0] + 3 * p[2] + 3 * p[4] - p[6]) / 4), Math.round((-p[1] + 3 * p[3] + 3 * p[5] - p[7]) / 4)]; }
+  function quadPoint(p0, c, p3, t) { const u = 1 - t; return [u * u * p0[0] + 2 * u * t * c[0] + t * t * p3[0], u * u * p0[1] + 2 * u * t * c[1] + t * t * p3[1]]; }
+  /** Découpe une cubique en quadratiques si l'écart dépasse la tolérance ; renvoie [{c:[x,y], e:[x,y]}, …] */
+  function fitQuad(p, depth = 0) {
+    const c = quadControl(p), p0 = [p[0], p[1]], p3 = [p[6], p[7]];
+    let err = 0;
+    for (const t of [0.25, 0.5, 0.75]) { const q = quadPoint(p0, c, p3, t), b = cubicPoint(p, t); err = Math.max(err, Math.hypot(b[0] - q[0], b[1] - q[1])); }
+    if (err <= QUAD_TOL || depth >= QUAD_DEPTH) return [{ c, e: p3 }];
+    const mid = cubicPoint(p, 0.5);
+    const a = [p[0], p[1], (p[0] + p[2]) / 2, (p[1] + p[3]) / 2, (p[0] + 2 * p[2] + p[4]) / 4, (p[1] + 2 * p[3] + p[5]) / 4, mid[0], mid[1]];
+    const b2 = [mid[0], mid[1], (p[2] + 2 * p[4] + p[6]) / 4, (p[3] + 2 * p[5] + p[7]) / 4, (p[4] + p[6]) / 2, (p[5] + p[7]) / 2, p[6], p[7]];
+    return [...fitQuad(a, depth + 1), ...fitQuad(b2, depth + 1)];
+  }
+  /** Commandes opentype.js -> contours TrueType [{x, y, on}] ; contrôle confondu avec la corde = ligne (point on-curve) */
+  function pathToTTPoints(path) {
+    const contours = [];
+    let cur = null;
+    for (const cmd of path.commands) {
+      if (cmd.type === 'M') { cur = [{ x: Math.round(cmd.x), y: Math.round(cmd.y), on: true }]; contours.push(cur); }
+      else if (cmd.type === 'Z' || !cur) { continue; }
+      else if (cmd.type === 'L') { cur.push({ x: Math.round(cmd.x), y: Math.round(cmd.y), on: true }); }
+      else if (cmd.type === 'Q') { cur.push({ x: Math.round(cmd.x1), y: Math.round(cmd.y1), on: false }, { x: Math.round(cmd.x), y: Math.round(cmd.y), on: true }); }
+      else if (cmd.type === 'C') {
+        let l = cur[cur.length - 1], p = [l.x, l.y, cmd.x1, cmd.y1, cmd.x2, cmd.y2, cmd.x, cmd.y];
+        for (const q of fitQuad(p)) {
+          const ex = q.e[0] - l.x, ey = q.e[1] - l.y, dev = Math.abs(ex * (q.c[1] - l.y) - (q.c[0] - l.x) * ey); // produit vectoriel : 0 si alignés
+          const straight = dev / (Math.hypot(ex, ey) || 1) < 0.75;
+          if (straight) { cur.push({ x: Math.round(q.e[0]), y: Math.round(q.e[1]), on: true }); }
+          else { cur.push({ x: q.c[0], y: q.c[1], on: false }, { x: Math.round(q.e[0]), y: Math.round(q.e[1]), on: true }); }
+          l = cur[cur.length - 1];
+        }
+      }
+    }
+    // point final confondu avec le point de départ : retiré (la fermeture est implicite)
+    for (const c of contours) { const f = c[0], g = c[c.length - 1]; if (c.length > 1 && f.x === g.x && f.y === g.y && f.on && g.on) c.pop(); }
+    return contours;
+  }
+  /** Glyphe simple -> octets glyf (drapeaux simples, deltas x/y en int16, longueur paire) */
+  function encodeSimpleGlyph(contours) {
+    contours = (contours || []).filter(c => c.length);
+    if (!contours.length) return null;
+    const flat = contours.flat();
+    const xMin = Math.min(...flat.map(p => p.x)), xMax = Math.max(...flat.map(p => p.x));
+    const yMin = Math.min(...flat.map(p => p.y)), yMax = Math.max(...flat.map(p => p.y));
+    const numPts = flat.length;
+    const buf = new Uint8Array(10 + 2 * contours.length + 2 + numPts + 4 * numPts + 1), dv = new DataView(buf.buffer);
+    let o = 0;
+    const u16 = v => { dv.setUint16(o, v & 0xFFFF); o += 2; };
+    u16(contours.length); u16(xMin); u16(yMin); u16(xMax); u16(yMax);
+    let n = 0; for (const c of contours) { n += c.length; u16(n - 1); }
+    u16(0);
+    for (const p of flat) dv.setUint8(o++, p.on ? 0x01 : 0x00);
+    let px = 0, py = 0;
+    for (const p of flat) { dv.setInt16(o, p.x - px); o += 2; px = p.x; }
+    for (const p of flat) { dv.setInt16(o, p.y - py); o += 2; py = p.y; }
+    if (buf.length % 2) dv.setUint8(o, 0);
+    return buf;
+  }
+  function maxpTable(numGlyphs, maxPoints, maxContours) {
+    const b = new Uint8Array(32), dv = new DataView(b.buffer);
+    dv.setUint32(0, 0x00010000); dv.setUint16(4, numGlyphs); dv.setUint16(6, maxPoints); dv.setUint16(8, maxContours);
+    dv.setUint16(14, 2); dv.setUint16(24, 64);
+    return b;
+  }
+  /** Binaire TTF d'une police construite par buildFont : contours quadratiques (glyf/loca/maxp 1.0),
+   *  hmtx réécrit (lsb = xMin du glyf, cohérence exigée des moteurs TrueType), sfntVersion TrueType */
+  function ttfBinary(built) {
+    const font = built.font, n = font.numGlyphs || font.glyphs.length;
+    const entries = [], xmins = []; let maxPoints = 0, maxContours = 0, off = 0;
+    for (let i = 0; i < n; i++) {
+      const contours = pathToTTPoints(font.glyphs.get(i).path), g = encodeSimpleGlyph(contours);
+      if (g) { let pts = 0; for (const c of contours) pts += c.length; maxPoints = Math.max(maxPoints, pts); maxContours = Math.max(maxContours, contours.length); }
+      entries.push(g); xmins.push(contours.length ? Math.min(...contours.flat().map(p => p.x)) : 0);
+    }
+    const loca = new Uint8Array(4 * (n + 1)), dvL = new DataView(loca.buffer);
+    entries.forEach((g, i) => { dvL.setUint32(i * 4, off); if (g) off += g.length; });
+    dvL.setUint32(n * 4, off);
+    const glyf = new Uint8Array(off); let o = 0;
+    for (const g of entries) if (g) { glyf.set(g, o); o += g.length; }
+    const hmtx = new Uint8Array(4 * n), dvM = new DataView(hmtx.buffer);
+    for (let i = 0; i < n; i++) { dvM.setUint16(4 * i, Math.max(0, Math.min(4000, font.glyphs.get(i).advanceWidth))); dvM.setInt16(4 * i + 2, Math.max(-2000, Math.min(2000, xmins[i]))); }
+    const st = built.styleInfo || {};
+    return finalizeSfnt(font.toArrayBuffer(), { kern: built.kern, macStyle: st.macStyle, fsSelection: st.fsSelection, weightClass: st.weightClass, italicAngle: st.italicAngle, sfntVersion: 0x00010000, numberOfHMetrics: n, indexToLocFormat: 1, drop: ['CFF '], replace: { glyf, loca, maxp: maxpTable(n, maxPoints, maxContours), hmtx } });
+  }
+
+  Object.assign(PA, { autoKern, gposTable, finalizeSfnt, fontBinary, ttfBinary, fitQuad, pathToTTPoints, KERN_PAIRS, glyphInfo, joinSides, buildFont, addArabicGSUB, toWOFF });
   if (typeof module !== 'undefined') module.exports = PA;
 })(typeof self !== 'undefined' ? self : globalThis);

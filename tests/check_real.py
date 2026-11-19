@@ -3,9 +3,9 @@ import json, string, subprocess, sys
 sys.path.insert(0, 'tests')
 from iou import raster
 from fontTools.ttLib import TTFont
-G = '/usr/share/fonts/truetype/sand-box/google/'
-REF = {'Handlee': G + 'Handlee/Handlee-Regular.ttf', 'Caveat': G + 'Caveat/Caveat-VariableFont_wght.ttf',
-       'DejaVuSerifBold': '/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf', 'NotoNaskh': G + 'Noto Naskh Arabic/NotoNaskhArabic-VariableFont_wght.ttf', 'Averia': G + 'Averia Serif Libre/AveriaSerifLibre-Regular.ttf', 'Quicksand': G + 'Quicksand/' + [f for f in __import__('os').listdir(G + 'Quicksand') if f.endswith('.ttf')][0]}
+from font_paths import find, google
+REF = {'Handlee': google('handlee', 'Handlee-Regular.ttf'), 'Caveat': google('caveat', 'Caveat[wght].ttf'),
+       'DejaVuSerifBold': find('DejaVuSerif-Bold.ttf'), 'NotoNaskh': google('notonaskharabic', 'NotoNaskhArabic[wght].ttf'), 'Averia': google('averiaseriflibre', 'AveriaSerifLibre-Regular.ttf'), 'Quicksand': google('quicksand', 'Quicksand[wght].ttf')}
 def iou(a, b): return float((a & b).sum() / max(1, (a | b).sum()))
 res = json.load(open('tests/out/realistic.json')); summary = []
 few = [r for r in res if r['expect'] == 'few']; res = [r for r in res if r['expect'] != 'few']

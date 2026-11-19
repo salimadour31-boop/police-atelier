@@ -78,6 +78,14 @@
     return { w, h, data: d };
   }
 
+  /** Rotation d'un quart de tour exact, dimensions échangées (aucune perte, tout pixel copié). */
+  function rot90(img, clockwise) {
+    const { w, h, data } = img, W = h, d = new Uint8Array(W * w);
+    if (clockwise) for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) d[x * W + (h - 1 - y)] = data[y * w + x];
+    else for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) d[(w - 1 - x) * W + y] = data[y * w + x];
+    return { w: W, h: w, data: d };
+  }
+
   /** Estimation de l'inclinaison (maximise la variance du profil horizontal) ; corriger avec rotate(img, -angle) */
   function estimateSkew(bin, range = 10, step = 0.5) {
     // sous-échantillonnage des pixels d'encre pour la vitesse
@@ -203,6 +211,6 @@
     return { w, h, data: d };
   }
 
-  Object.assign(PA, { estimateBackground, flatten, sauvola, toGray, levels, otsu, threshold, looksInverted, despeckle, rotate, estimateSkew, homography, warpPerspective, downscale });
+  Object.assign(PA, { estimateBackground, flatten, sauvola, toGray, levels, otsu, threshold, looksInverted, despeckle, rotate, rot90, estimateSkew, homography, warpPerspective, downscale });
   if (typeof module !== 'undefined') module.exports = PA;
 })(typeof self !== 'undefined' ? self : globalThis);

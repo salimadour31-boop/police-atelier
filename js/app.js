@@ -228,13 +228,13 @@
     state.G = G;
     state.famCache = {}; famInvalidate();
     Object.assign(state.settings, { kerning: $('kerning').checked, family: $('family').value || 'Ma Police', style: $('style').value || 'Regular', version: $('version').value || '1.000', spacing: +$('spacing').value / 100, tracking: +$('tracking').value });
-    try { const built = PA.buildFont(G, state.metrics, state.settings, state.analysis); state.font = built.font; state.built = built; state.otf = PA.fontBinary(built); }
+    try { const built = PA.buildFont(G, state.metrics, state.settings, state.analysis); state.font = built.font; state.built = built; state.otf = PA.fontBinary(built); state.ttf = PA.ttfBinary(built); }
     catch (e) { console.warn(e); showAlerts([...(state.alerts || []), { level: 'error', code: 'crash', msg: e.message }]); return; }
     // validation : relecture de l'OTF
     try { const re = opentype.parse(state.otf); $('valid').textContent = `✓ ${tr('statusBuilt')} : ${re.glyphs.length} glyphes, ${tr('valid')}.`; }
     catch (e) { $('valid').textContent = '⚠ ' + e.message; }
     loadPreviewFont(); renderGrid(); renderStats(); renderEditor();
-    ['dlOTF', 'dlWOFF', 'dlJSON', 'famPreview', 'famExport'].forEach(id => $(id).disabled = false);
+    ['dlOTF', 'dlTTF', 'dlWOFF', 'dlJSON', 'famPreview', 'famExport'].forEach(id => $(id).disabled = false);
     renderFamBase();
   }
   async function loadPreviewFont() {
@@ -337,7 +337,7 @@
         await new Promise(r => setTimeout(r, 15));
         const st = PA.buildStyle(state.G, state.metrics, state.analysis, state.settings, wi, it, state.famBase, state.famCache);
         const bin = PA.fontBinary(st.built); opentype.parse(bin); // relecture = validation
-        out.push({ info: st.info, bin, limited: st.limited });
+        out.push({ info: st.info, bin, built: st.built, limited: st.limited });
       }
     } catch (e) { console.warn(e); showAlerts([...(state.alerts || []), { level: 'error', code: 'crash', msg: e.message }]); return []; }
     finally { document.body.classList.remove('busy-cursor'); }
@@ -365,6 +365,7 @@
     const files = [];
     for (const s of styles) {
       files.push({ name: `OTF/${s.info.ps}.otf`, data: s.bin });
+      files.push({ name: `TTF/${s.info.ps}.ttf`, data: PA.ttfBinary(s.built) });
       try { files.push({ name: `WOFF/${s.info.ps}.woff`, data: await PA.toWOFF(s.bin, deflate) }); } catch (e) { console.warn(e); }
     }
     files.push({ name: 'LISEZMOI.txt', data: new TextEncoder().encode(tr('famReadme')) });
@@ -372,6 +373,7 @@
   };
 
   $('dlOTF').onclick = () => download(new Blob([state.otf], { type: 'font/otf' }), fileBase() + '.otf');
+  $('dlTTF').onclick = () => download(new Blob([state.ttf], { type: 'font/ttf' }), fileBase() + '.ttf');
   $('dlWOFF').onclick = async () => {
     const deflate = async u8 => new Uint8Array(await new Response(new Blob([u8]).stream().pipeThrough(new CompressionStream('deflate'))).arrayBuffer());
     download(new Blob([await PA.toWOFF(state.otf, deflate)], { type: 'font/woff' }), fileBase() + '.woff');
