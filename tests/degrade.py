@@ -61,15 +61,18 @@ def alphabet_photo(font_path, out, size=120, uneven=True, photo=True, lines=None
 if __name__ == '__main__':
     d = 'tests/fixtures/real/'
     import os; os.makedirs(d, exist_ok=True)
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from font_paths import find, google
+    CAVEAT = google('caveat', 'Caveat[wght].ttf')
     phone_photo(Image.open('tests/out/sheet-latin-hand.png'), d + 'photo-planche-latine.jpg')
     phone_photo(Image.open('tests/out/sheet-arabic-naskh.png'), d + 'photo-planche-arabe.jpg', W=3000, H=2250)
-    alphabet_photo(FONTS + 'Caveat/Caveat-VariableFont_wght.ttf', d + 'photo-alphabet-caveat.jpg', size=150)
-    alphabet_photo('/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf', d + 'serif-gras.png', size=140, uneven=False, photo=False, W=2600)
-    AV = FONTS + 'Averia Serif Libre/AveriaSerifLibre-Regular.ttf'
+    alphabet_photo(CAVEAT, d + 'photo-alphabet-caveat.jpg', size=150)
+    alphabet_photo(find('DejaVuSerif-Bold.ttf'), d + 'serif-gras.png', size=140, uneven=False, photo=False, W=2600)
+    AV = google('averiaseriflibre', 'AveriaSerifLibre-Regular.ttf')
     FULL = ['ABCDEFGHIJKLM', 'NOPQRSTUVWXYZ', 'abcdefghijklm', 'nopqrstuvwxyz', '0123456789', 'éèêàçùôîëïûœæ', '.,;:!?\'"-()']
     alphabet_photo(AV, d + 'photo-alphabet-accents.jpg', size=110, lines=FULL, tilt=2.5, stray=True)
     alphabet_photo(AV, d + 'photo-alphabet-serre.jpg', size=110, lines=['ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz', '0123456789'], tilt=-3, spacing=1.25, W=3400)
-    QS = FONTS + 'Quicksand/' + [f for f in os.listdir(FONTS + 'Quicksand') if f.endswith('.ttf')][0]
+    QS = google('quicksand', 'Quicksand[wght].ttf')
     alphabet_photo(QS, d + 'quicksand-alphabet.jpg', size=120)
     alphabet_photo(QS, d + 'quicksand-sans-Rr.jpg', size=120, lines=['ABCDEFGHIJKLMNOPQ', 'STUVWXYZ', 'abcdefghijklmnopq', 'stuvwxyz', '0123456789'])
     # encre claire sur fond sombre (craie / négatif)

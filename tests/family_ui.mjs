@@ -2,7 +2,7 @@
 // usage : node tests/family_ui.mjs [url]  puis  python3 tests/validate_family.py
 import { chromium } from 'playwright-core';
 const url = process.argv[2] || 'http://127.0.0.1:8765/index.html';
-const b = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args: ['--no-sandbox'] }); let bad = 0;
+const b = await chromium.launch({ executablePath: process.env.CHROME || '/usr/bin/google-chrome', args: ['--no-sandbox'] }); let bad = 0;
 for (const [vw, vh, tag] of [[1300, 900, 'bureau'], [390, 844, 'mobile']]) {
   const p = await b.newPage({ viewport: { width: vw, height: vh } }); const errs = [];
   p.on('console', m => { if (m.type() === 'error') errs.push(m.text()); }); p.on('pageerror', e => errs.push(e.message));

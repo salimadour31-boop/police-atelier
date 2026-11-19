@@ -5,7 +5,7 @@ import fs from 'node:fs';
 const URL = process.argv[2] || 'http://127.0.0.1:8765/index.html';
 const img = process.argv[3] || 'tests/fixtures/alphabet.png';
 const report = []; let bad = 0;
-for (const [name, type, opt] of [['chrome', chromium, { executablePath: '/usr/bin/google-chrome', args: ['--no-sandbox'] }], ['firefox', firefox, {}], ['webkit', webkit, {}]]) {
+for (const [name, type, opt] of [['chrome', chromium, { executablePath: process.env.CHROME || '/usr/bin/google-chrome', args: ['--no-sandbox'] }], ['firefox', firefox, {}], ['webkit', webkit, { headless: process.env.WEBKIT_HEADED ? false : true }]]) {
   const browser = await type.launch(opt);
   for (const [w, h] of [[1440, 900], [390, 844]]) {
     const ctx = await browser.newContext({ viewport: { width: w, height: h }, acceptDownloads: true });

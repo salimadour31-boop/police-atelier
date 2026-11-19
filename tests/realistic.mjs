@@ -20,7 +20,7 @@ const CASES = [
   { name: 'lettre-unique', file: R + 'lettre-unique-B.png', mode: 'free', ref: 'Quicksand', expect: 'few' },
   { name: 'photo-planche-arabe', file: R + 'photo-planche-arabe.jpg', mode: 'auto', ref: 'NotoNaskh', expect: 'arabic' }
 ];
-const b = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args: ['--no-sandbox'] });
+const b = await chromium.launch({ executablePath: process.env.CHROME || '/usr/bin/google-chrome', args: ['--no-sandbox'] });
 const out = [];
 for (const c of CASES) {
   const ctx = await b.newContext({ viewport: { width: 1440, height: 1000 }, acceptDownloads: true }); const p = await ctx.newPage(); const errs = [];

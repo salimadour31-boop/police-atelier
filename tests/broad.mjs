@@ -4,7 +4,7 @@ import { chromium } from 'playwright-core'; import fs from 'fs';
 const url = process.argv[2] || 'http://127.0.0.1:8765/index.html';
 const cases = JSON.parse(fs.readFileSync('tests/fixtures/broad/cases.json', 'utf8'));
 const extra = [{ name: 'planche-photo', file: 'tests/fixtures/real/photo-planche-latine.jpg', mode: 'template' }, { name: 'quicksand-alphabet-photo', file: 'tests/fixtures/real/quicksand-alphabet.jpg' }];
-const b = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args: ['--no-sandbox'] });
+const b = await chromium.launch({ executablePath: process.env.CHROME || '/usr/bin/google-chrome', args: ['--no-sandbox'] });
 const p = await b.newPage({ viewport: { width: 1300, height: 900 } }); const errs = [];
 p.on('pageerror', e => errs.push(e.message)); p.on('console', m => { if (m.type() === 'error') errs.push(m.text()); });
 await p.goto(url); let bad = 0; const out = [];

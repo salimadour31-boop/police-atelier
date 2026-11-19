@@ -2,11 +2,17 @@
 import os, glob, json, random
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 G = '/usr/share/fonts/truetype/sand-box/google/'
-def ttf(name, pref='Regular'):
+import sys, os
+sys.path.insert(0, os.path.dirname(__file__))
+from font_paths import google
+def ttf(name, key, pref='Regular'):
     fs = sorted(glob.glob(G + name + '/*.ttf')); r = [f for f in fs if pref in os.path.basename(f) and 'Italic' not in f]
-    return (r or [f for f in fs if 'Italic' not in f] or fs)[0]
-FONTS = {'quicksand': ttf('Quicksand'), 'comfortaa': ttf('Comfortaa'), 'poppins': ttf('Poppins'), 'montserrat': ttf('Montserrat'),
-         'nunito': ttf('Nunito'), 'lora': ttf('Lora'), 'merriweather': ttf('Merriweather'), 'roboto-slab': ttf('Roboto Slab'), 'playfair': ttf('Playfair Display')}
+    if fs: return (r or [f for f in fs if 'Italic' not in f] or fs)[0]
+    return GOOGLE[key]
+GOOGLE = {'quicksand': google('quicksand', 'Quicksand[wght].ttf'), 'comfortaa': google('comfortaa', 'Comfortaa[wght].ttf'), 'poppins': google('poppins', 'Poppins-Regular.ttf'), 'montserrat': google('montserrat', 'Montserrat[wght].ttf'),
+         'nunito': google('nunito', 'Nunito[wght].ttf'), 'lora': google('lora', 'Lora[wght].ttf'), 'merriweather': google('merriweather', 'Merriweather[opsz,wdth,wght].ttf'), 'roboto-slab': google('robotoslab', 'RobotoSlab[wght].ttf'), 'playfair': google('playfairdisplay', 'PlayfairDisplay[wght].ttf')}
+FONTS = {'quicksand': ttf('Quicksand', 'quicksand'), 'comfortaa': ttf('Comfortaa', 'comfortaa'), 'poppins': ttf('Poppins', 'poppins'), 'montserrat': ttf('Montserrat', 'montserrat'),
+         'nunito': ttf('Nunito', 'nunito'), 'lora': ttf('Lora', 'lora'), 'merriweather': ttf('Merriweather', 'merriweather'), 'roboto-slab': ttf('Roboto Slab', 'roboto-slab'), 'playfair': ttf('Playfair Display', 'playfair')}
 U, L, D = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz', '0123456789'
 LAYOUTS = {'3lignes': [U, L, D], '1ligne-espaces': [U + ' ' + L + ' ' + D], 'espacees': [' '.join(U), ' '.join(L), ' '.join(D)], '2lignes': [U + L[:6], L[6:] + ' ' + D]}
 STYLES = {'blanc': ((255, 255, 255), (0, 0, 0)), 'sombre': ((24, 26, 32), (240, 240, 240)), 'couleur': ((250, 214, 120), (40, 30, 120)), 'bleu-blanc': ((30, 80, 200), (255, 255, 255))}
