@@ -109,9 +109,16 @@
   }
 
   /* ---------- Crénage automatique (GPOS kern) ---------- */
-  // paires courantes ; la valeur vient des profils réels des glyphes, pas d'une table figée
+  // paires courantes ; la valeur vient des profils réels des glyphes, pas d'une table figée ;
+  // en plus, un balayage des profils détecte toute paire trop serrée (lettres accentuées comprises)
   const KERN_PAIRS = ('AV AW AY AT AC AG AO AQ AU Av Aw Ay VA WA YA TA LT LV LW LY Ly L\' FA F. F, PA P. P, TA Ta Tc Te To Tr Ts Tu Tw Ty Ti T. T, ' +
     'Va Ve Vo Vu Wa We Wo Ya Ye Yo Yu Y. Y, V. V, W. W, RT RV RW RY Ka Ke Ko Kv Ky ky av aw ay ov ow oy ox va ve vo wa we wo ya ye yo y. y, v. v, w. w, r. r, f. f,').split(' ').filter(x => x.length === 2);
+  // élargissement : même formule pour les capitales ouvertes/rondes après TVWY et les minuscules
+  // à bord gauche rond ou diagonal (les fûts droits à gauche n'en ont pas besoin : leurs approches suffisent)
+  const CAPS_OUVERTES = 'ACGJOQSUVWY', LOWS_RONDES = 'aàâäæcçdeéèêëfgoôöœqsuvwxyz';
+  for (const l of 'TVWY') for (const r of CAPS_OUVERTES + LOWS_RONDES) KERN_PAIRS.push(l + r);
+  for (const l of 'AFPR') for (const r of LOWS_RONDES) KERN_PAIRS.push(l + r);
+  for (const l of 'vwy') for (const r of LOWS_RONDES) KERN_PAIRS.push(l + r);
   /** profil gauche/droit par bandes horizontales de 25 unités */
   function profile(contours) {
     const L = {}, R = {};
@@ -121,10 +128,11 @@
     }
     return { L, R };
   }
-  function pairGap(A, B) {
+  function pairGap(A, B, tolr) {
+    const a = tolr || 1;
     // écart horizontal entre le bord droit de A et le bord gauche de B, bande par bande (bandes voisines tolérées)
     const gaps = [];
-    for (const k in A.p.R) { const b = +k; let lb = Infinity; for (const d of [-1, 0, 1]) if (B.p.L[b + d] != null) lb = Math.min(lb, B.p.L[b + d]); if (lb < Infinity) gaps.push(A.adv - A.p.R[k] + lb); }
+    for (const k in A.p.R) { const b = +k; let lb = Infinity; for (let d = -a; d <= a; d++) if (B.p.L[b + d] != null) lb = Math.min(lb, B.p.L[b + d]); if (lb < Infinity) gaps.push(A.adv - A.p.R[k] + lb); }
     return gaps.length ? { min: Math.min(...gaps), avg: gaps.reduce((a, b) => a + b, 0) / gaps.length, n: gaps.length } : null;
   }
   function autoKern(finals, index, t) {
@@ -132,14 +140,36 @@
     // référence : écart optique entre deux fûts droits (HH, nn)
     const ref = ['HH', 'nn', 'II'].map(s => get(s[0]) && pairGap(get(s[0]), get(s[1]))).find(Boolean);
     if (!ref) return [];
+    // noyau : rapprocher l'écart moyen de la référence, sans que le point le plus proche descende sous 45 % de l'écart de référence
+    const kernVal = g => Math.round(Math.max(-120, Math.min(0, Math.max((ref.avg - g.avg) * 0.4, ref.min * 0.45 - g.min))) / 5) * 5;
+    const cand = new Set(KERN_PAIRS);
+    // balayage : même motif que To/Ta, généralisé à toute forme — le premier glyphe a ses colonnes
+    // extrêmes à droite uniquement dans sa moitié haute (bras, diagonales) et le second n'a aucune
+    // encre face à ces bandes et un bord gauche courbe ; une paire à bords droits (nn, oo…) est épargnée
+    const keys = Object.keys(finals).sort((a, b) => a.localeCompare(b));
+    if (keys.length <= 800) {
+      for (let i = 0; i < keys.length; i++) {
+        const A = get(keys[i]); if (!A) continue;
+        const ka = Object.keys(A.p.R).map(Number); if (ka.length < 4) continue;
+        const maxR = Math.max(...ka.map(k => A.p.R[k])), lo = Math.min(...ka), hi = Math.max(...ka);
+        const ex = ka.filter(k => A.p.R[k] >= maxR - 25);
+        if (!ex.every(k => 2 * k >= lo + hi)) continue;
+        for (let j = 0; j < keys.length; j++) {
+          if (j === i) continue;
+          const B = get(keys[j]); if (!B) continue;
+          const kb = Object.keys(B.p.L).map(Number); if (!kb.length) continue;
+          if (kb.some(k => ex.some(e => Math.abs(e - k) <= 3))) continue;
+          const lv = kb.map(k => B.p.L[k]);
+          if (Math.max(...lv) - Math.min(...lv) < 0.12 * B.adv) continue;
+          const g = pairGap(A, B); if (g && kernVal(g) <= -10) cand.add(keys[i] + keys[j]);
+        }
+      }
+    }
     const out = [];
-    for (const pr of KERN_PAIRS) {
+    for (const pr of cand) {
       const A = get(pr[0]), B = get(pr[1]); if (!A || !B) continue;
       const g = pairGap(A, B); if (!g) continue;
-      // rapprocher l'écart moyen de la référence, sans que le point le plus proche descende sous 45 % de l'écart de référence
-      let k = (ref.avg - g.avg) * 0.4;
-      k = Math.max(k, ref.min * 0.45 - g.min);
-      k = Math.round(Math.max(-120, Math.min(0, k)) / 5) * 5;
+      const k = kernVal(g);
       if (k <= -10) out.push([index[pr[0]], index[pr[1]], k, pr]);
     }
     return out;
